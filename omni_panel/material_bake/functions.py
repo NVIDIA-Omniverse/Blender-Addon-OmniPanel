@@ -1,11 +1,30 @@
+# ##### BEGIN GPL LICENSE BLOCK #####
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# ##### END GPL LICENSE BLOCK #####
+
+# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+
 from pathlib import Path
 import bpy
 import os
 import sys
 import tempfile
 from . import material_setup
-from .bake_operation import BakeOperation, MasterOperation
-
+from .data import BakeOperation, MasterOperation
 
 #Global variables
 psocketname = {
@@ -23,16 +42,7 @@ psocketname = {
     }
 
 def printmsg(msg):
-    print(f"SIMPLEBAKE: {msg}")
-
-
-def does_object_have_bakes(obj):
-    
-    for img in bpy.data.images:
-        if "SB_objname" in img: #SB_objname is always set. Even for mergedbake
-            return True
-        else:
-            return False
+    print(f"BAKE: {msg}")
                     
 
 def gen_image_name(obj_name, baketype, demo=False):
@@ -42,7 +52,7 @@ def gen_image_name(obj_name, baketype, demo=False):
     
     #First, let's get the format string we are working with
     
-    prefs = bpy.context.preferences.addons[__package__].preferences
+    prefs = bpy.context.preferences.addons["OmniPanel"].preferences
     image_name = prefs.img_name_format
     
     #"%OBJ%_%BATCH%_%BAKETYPE%"
@@ -126,7 +136,7 @@ def removeDisconnectedNodes(nodetree):
             
 def backupMaterial(mat):
     dup = mat.copy()
-    dup.name = mat.name + "_SimpleBake"
+    dup.name = mat.name + "_OmniBake"
 
 def restoreAllMaterials():
     #Not efficient but, if we are going to do things this way, we need to loop over every object in the scene 
@@ -136,7 +146,7 @@ def restoreAllMaterials():
             origname = slot.name
             #Try to set to the corresponding material that was the backup
             try:
-                slot.material = bpy.data.materials[origname + "_SimpleBake"]
+                slot.material = bpy.data.materials[origname + "_OmniBake"]
                 
                 #If not already on our list, log the original material (that we messed with) for mass deletion
                 if origname not in dellist:
@@ -152,23 +162,15 @@ def restoreAllMaterials():
     
     #Rename all materials to the original name, leaving us where we started
     for mat in bpy.data.materials:
-        if "_SimpleBake" in mat.name:
-            mat.name = mat.name.replace("_SimpleBake", "")
-
-def isBlendSaved():
-    path = bpy.data.filepath
-    if(path=="/" or path==""):
-        #Not saved
-        return False
-    else:
-        return True
+        if "_OmniBake" in mat.name:
+            mat.name = mat.name.replace("_OmniBake", "")
 
 def create_Images(imgname, thisbake, objname):
     #thisbake is subtype e.g. diffuse, ao, etc.
     
     current_bake_op = MasterOperation.current_bake_operation
     global_mode = current_bake_op.bake_mode
-    cycles_mode = bpy.context.scene.cycles.bake_type
+    # cycles_mode = bpy.context.scene.cycles.bake_type
     batch = MasterOperation.batch_name
     
     printmsg(f"Creating image {imgname}")
@@ -188,7 +190,7 @@ def create_Images(imgname, thisbake, objname):
     
     
     #Create image 32 bit or not 32 bit
-    if thisbake == "normal" or (global_mode == BakeOperation.CYCLESBAKE and bpy.context.scene.cycles.bake_type == "NORMAL"):
+    if thisbake == "normal" :
         image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, alpha=alpha, float_buffer=True)
     elif all32:
         image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, alpha=alpha, float_buffer=True)
@@ -203,16 +205,6 @@ def create_Images(imgname, thisbake, objname):
     image["SB_batch"] = batch
     image["SB_globalmode"] = global_mode
     image["SB_thisbake"] = thisbake
-    if MasterOperation.merged_bake:
-        image["SB_mergedbakename"] = MasterOperation.merged_bake_name
-    else:
-        image["SB_mergedbakename"] = None
-    if current_bake_op.uv_mode == "udims":
-        image["SB_udims"] = True
-    else:
-        image["SB_udims"] = False
-        
-    
     
     #Always mark new iages fake user when generated in the background
     if "--background" in sys.argv:
@@ -264,14 +256,14 @@ def createdummynodes(nodetree, thisbake):
             if(socketname == "Base Color" or socketname == "Subsurface Color"):
                 rgb = nodetree.nodes.new("ShaderNodeRGB")
                 rgb.outputs[0].default_value = val
-                rgb.label = "SimpleBake"
+                rgb.label = "OmniBake"
                 nodetree.links.new(rgb.outputs[0], psocket)
 
             #If this is anything else, use a value node
             else:
                 vnode = nodetree.nodes.new("ShaderNodeValue")
                 vnode.outputs[0].default_value = val
-                vnode.label = "SimpleBake"
+                vnode.label = "OmniBake"
                 nodetree.links.new(vnode.outputs[0], psocket)
 
 def bakeoperation(thisbake, img):
@@ -287,24 +279,11 @@ def bakeoperation(thisbake, img):
     img.pack()
 
 def startingChecks(objects, bakemode):
-    
-    
-    #Refresh the list before we do anything else
-    update_advanced_object_list()
 
-    #This is hacky. A better way to do this needs to be found
-    advancedobj = bpy.context.scene.simplebake_advancedobjectselection
-    if advancedobj:
-        objects = advanced_object_selection_to_list()
-    
     messages = []
     
     if len(objects) == 0:
         messages.append("ERROR: Nothing selected for bake")
-        if advancedobj:
-            messages.append("NOTE: You have advanced object selection turned on, so you have to add bake objects at the top of the SimpleBake panel")
-            messages.append("If you want to select objects for baking in the viewport, turn off advanced object selection")
-        
         
     #Are any of our objects hidden?
     for obj in objects:
@@ -315,7 +294,6 @@ def startingChecks(objects, bakemode):
     for obj in objects:
         if obj.hide_render:
             messages.append(f"ERROR: Object '{obj.name}' is hidden for rendering (camera icon in outliner)")
-            
     
     #None of the objects can have zero faces
     for obj in objects:
@@ -346,15 +324,21 @@ def startingChecks(objects, bakemode):
             if not checkObjectValidMaterialConfig(obj):
                 fix_invalid_material_config(obj)
                 
-            
             #Do all materials have valid PBR config?
-            for slot in obj.material_slots:
-                mat = slot.material
-                result = checkMatsValidforPBR(mat)
-                if len(result) > 0:
-                    for node_name in result:
-                        messages.append(f"ERROR: Node '{node_name}' in material '{mat.name}' on object '{obj.name}' is not valid for PBR bake. Principled BSDFs and/or Emission only!")
-
+            if bpy.context.scene.more_shaders == False:
+                for slot in obj.material_slots:
+                    mat = slot.material
+                    result = checkMatsValidforPBR(mat)
+                    if len(result) > 0:
+                        for node_name in result:
+                            messages.append(f"ERROR: Node '{node_name}' in material '{mat.name}' on object '{obj.name}' is not valid for PBR bake. Principled BSDFs and/or Emission only!")
+            else:
+                for slot in obj.material_slots:
+                    mat = slot.material
+                    result = checkExtraMatsValidforPBR(mat)
+                    if len(result) > 0:
+                        for node_name in result:
+                            messages.append(f"ERROR: Node '{node_name}' in material '{mat.name}' on object '{obj.name}' is not supported")
 
     #Let's report back
     if len(messages) != 0:
@@ -382,11 +366,11 @@ def processUVS():
         
         for obj in current_bake_op.bake_objects:
         
-            if("SimpleBake" in obj.data.uv_layers):
-                obj.data.uv_layers.remove(obj.data.uv_layers["SimpleBake"])
+            if("OmniBake" in obj.data.uv_layers):
+                obj.data.uv_layers.remove(obj.data.uv_layers["OmniBake"])
         
-            obj.data.uv_layers.new(name="SimpleBake")
-            obj.data.uv_layers["SimpleBake"].active = True
+            obj.data.uv_layers.new(name="OmniBake")
+            obj.data.uv_layers["OmniBake"].active = True
             obj.select_set(state=True)
         
             selectOnlyThis(obj)
@@ -409,7 +393,7 @@ def processUVS():
     elif bpy.context.scene.newUVoption:
         printmsg("We are generating new UVs")
         #Slight hack. Single object must always be Smart UV Project (nothing else makes sense)
-        if len(current_bake_op.bake_objects) < 2 or (bpy.context.scene.selected_s2a or bpy.context.scene.cycles_s2a):
+        if len(current_bake_op.bake_objects) < 2 :
             bpy.context.scene.newUVmethod = "SmartUVProject_Individual"
         
         #If we are using the combine method, the process is the same for merged and non-merged
@@ -417,14 +401,14 @@ def processUVS():
             printmsg("We are combining all existing UVs into one big atlas map")
             for obj in current_bake_op.bake_objects:
                 #If there is already an old map, remove it
-                if "SimpleBake_Old" in obj.data.uv_layers:
-                    obj.data.uv_layers.remove(obj.data.uv_layers["SimpleBake_Old"])
-                #If we already have a map called SimpleBake, rename it.
-                if("SimpleBake" in obj.data.uv_layers):
-                    obj.data.uv_layers["SimpleBake"].name = "SimpleBake_Old"
-                #Create a new UVMap called SimpleBake based on whatever was active
-                obj.data.uv_layers.new(name="SimpleBake")
-                obj.data.uv_layers["SimpleBake"].active = True
+                if "OmniBake_Old" in obj.data.uv_layers:
+                    obj.data.uv_layers.remove(obj.data.uv_layers["OmniBake_Old"])
+                #If we already have a map called OmniBake, rename it.
+                if("OmniBake" in obj.data.uv_layers):
+                    obj.data.uv_layers["OmniBake"].name = "OmniBake_Old"
+                #Create a new UVMap called OmniBake based on whatever was active
+                obj.data.uv_layers.new(name="OmniBake")
+                obj.data.uv_layers["OmniBake"].active = True
                 
             bpy.ops.object.select_all(action="DESELECT")
             for obj in current_bake_op.bake_objects:
@@ -441,8 +425,6 @@ def processUVS():
             if bpy.context.active_object.type != "MESH":
                 bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
                 
-             
-                
             #With everything selected, pack into one big map
             bpy.ops.object.mode_set(mode="EDIT", toggle=False)
             #Unhide any geo that's hidden in edit mode or it'll cause issues.
@@ -458,18 +440,14 @@ def processUVS():
         elif bpy.context.scene.newUVmethod == "SmartUVProject_Individual":
             printmsg("We are unwrapping each object individually with Smart UV Project")
             obs = []
-            if bpy.context.scene.selected_s2a:
-                objs = [current_bake_op.sb_target_object]
-            elif bpy.context.scene.cycles_s2a:
-                objs = [current_bake_op.sb_target_object_cycles]
-            else:
-                objs = current_bake_op.bake_objects
+
+            objs = current_bake_op.bake_objects
             
             for obj in objs:
-                if("SimpleBake" in obj.data.uv_layers):
-                    obj.data.uv_layers.remove(obj.data.uv_layers["SimpleBake"])
-                obj.data.uv_layers.new(name="SimpleBake")
-                obj.data.uv_layers["SimpleBake"].active = True
+                if("OmniBake" in obj.data.uv_layers):
+                    obj.data.uv_layers.remove(obj.data.uv_layers["OmniBake"])
+                obj.data.uv_layers.new(name="OmniBake")
+                obj.data.uv_layers["OmniBake"].active = True
                 #Will set active object
                 selectOnlyThis(obj)
                 
@@ -488,10 +466,10 @@ def processUVS():
             printmsg("We are unwrapping all objects into an atlas map with Smart UV Project")
             bpy.ops.object.select_all(action="DESELECT")
             for obj in current_bake_op.bake_objects:
-                if("SimpleBake" in obj.data.uv_layers):
-                    obj.data.uv_layers.remove(obj.data.uv_layers["SimpleBake"])
-                obj.data.uv_layers.new(name="SimpleBake")
-                obj.data.uv_layers["SimpleBake"].active = True
+                if("OmniBake" in obj.data.uv_layers):
+                    obj.data.uv_layers.remove(obj.data.uv_layers["OmniBake"])
+                obj.data.uv_layers.new(name="OmniBake")
+                obj.data.uv_layers["OmniBake"].active = True
                 obj.select_set(state=True)
             #With everything now selected, UV project into one big map
             
@@ -529,10 +507,10 @@ def processUVS():
         printmsg("We are working with the existing UVs")
         
         if bpy.context.scene.prefer_existing_sbmap:
-            printmsg("We are preferring existing UV maps called SimpleBake. Setting them to active")
+            printmsg("We are preferring existing UV maps called OmniBake. Setting them to active")
             for obj in current_bake_op.bake_objects:
-                if("SimpleBake" in obj.data.uv_layers):
-                    obj.data.uv_layers["SimpleBake"].active = True
+                if("OmniBake" in obj.data.uv_layers):
+                    obj.data.uv_layers["OmniBake"].active = True
         
          
     #Before we finish, restore the original selected and active objects
@@ -563,15 +541,7 @@ def restore_Original_UVs():
             pbr_target.data.uv_layers.active = pbr_target.data.uv_layers[original_uv]
         except KeyError:
             printmsg(f"No original UV map found for {pbr_target.name}")
-        
-    cycles_target = current_bake_op.sb_target_object_cycles
-    if cycles_target != None and MasterOperation.orig_UVs_dict[cycles_target.name] != None:
-        try:
-            original_uv = MasterOperation.orig_UVs_dict[cycles_target.name]
-            cycles_target.data.uv_layers.active = cycles_target.data.uv_layers[original_uv]   
-        except KeyError:
-            printmsg(f"No original UV map found for {cycles_target.name}")
-    
+
     
 def setupEmissionRunThrough(nodetree, m_output_node, thisbake, ismix=False):
     
@@ -580,7 +550,7 @@ def setupEmissionRunThrough(nodetree, m_output_node, thisbake, ismix=False):
     
     #Create emission shader
     emissnode = nodes.new("ShaderNodeEmission")
-    emissnode.label = "SimpleBake"
+    emissnode.label = "OmniBake"
     
     #Connect to output
     if(ismix):
@@ -589,7 +559,7 @@ def setupEmissionRunThrough(nodetree, m_output_node, thisbake, ismix=False):
         
         #Add a mix shader node and label it
         mnode = nodes.new("ShaderNodeMixShader")
-        mnode.label = "SimpleBake"
+        mnode.label = "OmniBake"
         
         #Connect new mix node to the output
         fromsocket = mnode.outputs[0]
@@ -610,7 +580,7 @@ def setupEmissionRunThrough(nodetree, m_output_node, thisbake, ismix=False):
         else:
             val = existing_m_node.inputs[0].default_value
             vnode = nodes.new("ShaderNodeValue")
-            vnode.label = "SimpleBake"
+            vnode.label = "OmniBake"
             vnode.outputs[0].default_value = val
             
             fromsocket = vnode.outputs[0]
@@ -712,17 +682,17 @@ def prepObjects(objs, baketype):
         #Unless we are baking tex per mat, then clear all materials
         if not bpy.context.scene.tex_per_mat:
             new_obj.data.materials.clear()
-        new_obj.name = objname + "_SimpleBake"
+        new_obj.name = objname + "_OmniBake"
         
         #Create a collection for our baked objects if it doesn't exist
-        if "SimpleBake_Bakes" not in bpy.data.collections:
-            c = bpy.data.collections.new("SimpleBake_Bakes")
+        if "OmniBake_Bakes" not in bpy.data.collections:
+            c = bpy.data.collections.new("OmniBake_Bakes")
             bpy.context.scene.collection.children.link(c)
 
         #Make sure it's visible and enabled for current view laywer or it screws things up
-        bpy.context.view_layer.layer_collection.children["SimpleBake_Bakes"].exclude = False
-        bpy.context.view_layer.layer_collection.children["SimpleBake_Bakes"].hide_viewport = False
-        c = bpy.data.collections["SimpleBake_Bakes"]
+        bpy.context.view_layer.layer_collection.children["OmniBake_Bakes"].exclude = False
+        bpy.context.view_layer.layer_collection.children["OmniBake_Bakes"].hide_viewport = False
+        c = bpy.data.collections["OmniBake_Bakes"]
         
         
         #Link object to our new collection
@@ -736,36 +706,36 @@ def prepObjects(objs, baketype):
         #---------------------------------UVS--------------------------------------
         
         uvlayers = new_obj.data.uv_layers
-        #If we generated new UVs, it will be called "SimpleBake" and we are using that. End of.
+        #If we generated new UVs, it will be called "OmniBake" and we are using that. End of.
         #Same if we are being called for Sketchfab upload, and last bake used new UVs
         if bpy.context.scene.newUVoption:
             pass
         
-        #If there is an existing map called SimpleBake, and we are preferring it, use that
-        elif ("SimpleBake" in uvlayers) and bpy.context.scene.prefer_existing_sbmap:
+        #If there is an existing map called OmniBake, and we are preferring it, use that
+        elif ("OmniBake" in uvlayers) and bpy.context.scene.prefer_existing_sbmap:
             pass
             
-        #Even if we are not preferring it, if there is just one map called SimpleBake, we are using that
-        elif ("SimpleBake" in uvlayers) and len(uvlayers) <2:
+        #Even if we are not preferring it, if there is just one map called OmniBake, we are using that
+        elif ("OmniBake" in uvlayers) and len(uvlayers) <2:
             pass
             
-        #If there is an existing map called SimpleBake, and we are not preferring it, it has to go
-        #Active map becommes SimpleBake
-        elif ("SimpleBake" in uvlayers) and not bpy.context.scene.prefer_existing_sbmap:
-            uvlayers.remove(uvlayers["SimpleBake"])
+        #If there is an existing map called OmniBake, and we are not preferring it, it has to go
+        #Active map becommes OmniBake
+        elif ("OmniBake" in uvlayers) and not bpy.context.scene.prefer_existing_sbmap:
+            uvlayers.remove(uvlayers["OmniBake"])
             active_layer = uvlayers.active
-            active_layer.name = "SimpleBake"
+            active_layer.name = "OmniBake"
             
         #Finally, if none of the above apply, we are just using the active map
-        #Active map becommes SimpleBake
+        #Active map becommes OmniBake
         else:
             active_layer = uvlayers.active
-            active_layer.name = "SimpleBake"
+            active_layer.name = "OmniBake"
             
-        #In all cases, we can now delete everything other than SimpleBake
+        #In all cases, we can now delete everything other than OmniBake
         deletelist = []
         for uvlayer in uvlayers:
-            if (uvlayer.name != "SimpleBake"):
+            if (uvlayer.name != "OmniBake"):
                 deletelist.append(uvlayer.name)
         for uvname in deletelist:
             uvlayers.remove(uvlayers[uvname])
@@ -776,16 +746,10 @@ def prepObjects(objs, baketype):
         if not bpy.context.scene.tex_per_mat:
         
             #Create a new material
-            #If not mergedbake, call it same as object + batchname + baked
-            if not bpy.context.scene.mergedBake:
-                mat = bpy.data.materials.get(objname + "_" + bpy.context.scene.batchName + "_baked")
-                if mat is None:
-                    mat = bpy.data.materials.new(name=objname + "_" + bpy.context.scene.batchName +"_baked")
-            #For merged bake, it's the user specified name + batchname.
-            else:
-                mat = bpy.data.materials.get(bpy.context.scene.mergedBakeName + "_" + bpy.context.scene.batchName)
-                if mat is None:
-                    mat = bpy.data.materials.new(bpy.context.scene.mergedBakeName + "_" + bpy.context.scene.batchName)
+            #call it same as object + batchname + baked
+            mat = bpy.data.materials.get(objname + "_" + bpy.context.scene.batchName + "_baked")
+            if mat is None:
+                mat = bpy.data.materials.new(name=objname + "_" + bpy.context.scene.batchName +"_baked")
             
             # Assign it to object
             mat.use_nodes = True
@@ -802,13 +766,10 @@ def prepObjects(objs, baketype):
             mat = obj.material_slots[0].material
             nodetree = mat.node_tree
             
-            if(baketype in {BakeOperation.PBR, BakeOperation.PBRS2A}):
-                material_setup.create_principled_setup(nodetree, obj)
-            if baketype == BakeOperation.CYCLESBAKE:
-                material_setup.create_cyclesbake_setup(nodetree, obj)
-            
+            material_setup.create_principled_setup(nodetree, obj)
+
             #Change object name to avoid collisions
-            obj.name = obj.name.replace("_SimpleBake", "_Baked")    
+            obj.name = obj.name.replace("_OmniBake", "_Baked")    
              
     bpy.ops.object.select_all(action="DESELECT")
     for obj in export_objects:
@@ -841,7 +802,7 @@ def setup_pure_p_material(nodetree, thisbake):
     
     #Create an emission shader
     emissnode = nodes.new("ShaderNodeEmission")
-    emissnode.label = "SimpleBake"
+    emissnode.label = "OmniBake"
     emissnode.location = loc
     emissnode.location.y = emissnode.location.y + 200
     
@@ -862,7 +823,7 @@ def setup_pure_e_material(nodetree, thisbake):
         for node in nodes:
             if node.type == "EMISSION":
                 node.mute = True
-                node.label = "SimpleBakeMuted"
+                node.label = "OmniBakeMuted"
 
 def setup_mix_material(nodetree, thisbake):
     #No need to mute emission nodes. They are automuted by setting the RGBMix to black
@@ -878,7 +839,7 @@ def setup_mix_material(nodetree, thisbake):
         if node.type == "MIX_SHADER":
             loc = node.location
             rgbmix = nodetree.nodes.new("ShaderNodeMixRGB")
-            rgbmix.label = "SimpleBake"
+            rgbmix.label = "OmniBake"
             rgbmix.location = loc
             rgbmix.location.y = rgbmix.location.y + 200
                         
@@ -892,7 +853,7 @@ def setup_mix_material(nodetree, thisbake):
             else:
                 val = node.inputs[0].default_value
                 vnode = nodes.new("ShaderNodeValue")
-                vnode.label = "SimpleBake"
+                vnode.label = "OmniBake"
                 vnode.outputs[0].default_value = val
             
                 fromsocket = vnode.outputs[0]
@@ -957,7 +918,7 @@ def setup_mix_material(nodetree, thisbake):
     
     #Create an emission shader
     emissnode = nodes.new("ShaderNodeEmission")
-    emissnode.label = "SimpleBake"
+    emissnode.label = "OmniBake"
     emissnode.location = loc
     emissnode.location.y = emissnode.location.y + 200
     
@@ -986,7 +947,6 @@ def is_image_single_colour(img):
         return False
 
     return True
-
 
 #------------Long Name Truncation-----------------------
 trunc_num = 0
@@ -1033,83 +993,23 @@ def ShowMessageBox(messageitems_list, title, icon = 'INFO'):
 
     bpy.context.window_manager.popup_menu(draw, title = title, icon = icon)
     
-    
 #---------------Bake Progress--------------------------------------------
 def write_bake_progress(current_operation, total_operations):
     progress = int((current_operation / total_operations) * 100)
     
     
     t = Path(tempfile.gettempdir())
-    t = t / f"SimpleBake_Bgbake_{os.getpid()}"
+    t = t / f"OmniBake_Bgbake_{os.getpid()}"
 
     with open(str(t), "w") as progfile:
         progfile.write(str(progress))
         
-   
 #---------------End Bake Progress--------------------------------------------
 
 
 def diff(li1, li2):
     li_dif = [i for i in li1 + li2 if i not in li1 or i not in li2]
     return li_dif
-
-
-#--------------UDIMS-------------------------------------
-
-
-#Dict obj name to tile
-currentUDIMtile = {}
-
-def UDIM_focustile(obj,desiredUDIMtile):
-    
-    orig_active_object = bpy.context.active_object
-    orig_selected_objects = bpy.context.selected_objects
-    
-    global currentUDIMtile
-    
-    
-    selectOnlyThis(obj)
-    bpy.ops.object.editmode_toggle()
-    
-    printmsg(f"Shifting UDIM focus tile: Object: {obj.name} Tile: {desiredUDIMtile}")
-    
-    
-    import bmesh
-    
-    if obj.name not in currentUDIMtile:
-        #Must be first time. Set to 0
-        currentUDIMtile[obj.name] = 0
-    
-    #Difference between desired and current
-    tilediff =  desiredUDIMtile - currentUDIMtile[obj.name]
-    
-    me = obj.data
-    bm = bmesh.new()
-    bm = bmesh.from_edit_mesh(me)
-
-    uv_layer = bm.loops.layers.uv.verify()
-    #bm.faces.layers.tex.verify()  # currently blender needs both layers.
-
-    # scale UVs x2
-    for f in bm.faces:
-        for l in f.loops:
-            l[uv_layer].uv[0] -= tilediff
-
-    #bm.to_mesh(me)
-    me.update()
-    
-    currentUDIMtile[obj.name] = desiredUDIMtile
-    
-    bpy.ops.object.editmode_toggle()
-    
-    #Restore the original selected and active objects before we leave
-    for o in orig_selected_objects:
-        o.select_set(state=True)
-    bpy.context.view_layer.objects.active = orig_active_object
-    
-#ZERO Indexed
-#UDIM_FocusTile(bpy.data.objects[1],0)
-
 
 past_items_dict = {}
 def spot_new_items(initialise=True, item_type="images"):
@@ -1158,37 +1058,34 @@ def checkMatsValidforPBR(mat):
                 #But is it actually connected to anything?
                 if len(node.outputs[0].links) >0:
                     invalid_node_names.append(node.name)
-                
     
     return invalid_node_names
-    
-    
-def advanced_object_selection_to_list():
-    objs = []
-    for li in bpy.context.scene.simplebake_bakeobjs_advanced_list:
-        objs.append(li.obj_point)
-    
-    return objs
-    
-def update_advanced_object_list():
-    
-    my_list = bpy.context.scene.simplebake_bakeobjs_advanced_list
 
-    gone = []
-    for li in my_list:
-        #Is it empty?
-        if li.obj_point == None:
-            gone.append(li.name)
-            
-        #It it not in use anywhere else?
-        elif len(li.obj_point.users_scene) < 1:
-            gone.append(li.name)
+def checkExtraMatsValidforPBR(mat):
 
-    for g in gone:
-        my_list.remove(my_list.find(g))
-        #We were the only user (presumably)
-        if g in bpy.data.objects:
-            bpy.data.objects.remove(bpy.data.objects[g])
+    nodes = mat.node_tree.nodes
+
+    valid = True
+    invalid_node_names = []
+    
+    for node in nodes:
+        if len(node.outputs) > 0:
+            if node.outputs[0].type == "SHADER" and not (node.bl_idname == "ShaderNodeBsdfPrincipled" or 
+            node.bl_idname == "ShaderNodeMixShader" or 
+            node.bl_idname == "ShaderNodeAddShader" or 
+            node.bl_idname == "ShaderNodeEmission" or 
+            node.bl_idname == "ShaderNodeBsdfGlossy" or 
+            node.bl_idname == "ShaderNodeBsdfGlass" or 
+            node.bl_idname == "ShaderNodeBsdfRefraction" or 
+            node.bl_idname == "ShaderNodeBsdfDiffuse" or 
+            node.bl_idname == "ShaderNodeBsdfAnisotropic" or 
+            node.bl_idname == "ShaderNodeBsdfTransparent"):
+                #But is it actually connected to anything?
+                if len(node.outputs[0].links) >0:
+                    invalid_node_names.append(node.name)
+                
+    print(invalid_node_names)
+    return invalid_node_names
 
 def deselect_all_not_mesh():
     import bpy
@@ -1204,11 +1101,11 @@ def deselect_all_not_mesh():
         
 def fix_invalid_material_config(obj):
     
-    if "SimpleBake_Placeholder" in bpy.data.materials:
-        mat = bpy.data.materials["SimpleBake_Placeholder"]
+    if "OmniBake_Placeholder" in bpy.data.materials:
+        mat = bpy.data.materials["OmniBake_Placeholder"]
     else:
-        mat = bpy.data.materials.new("SimpleBake_Placeholder")
-        bpy.data.materials["SimpleBake_Placeholder"].use_nodes = True
+        mat = bpy.data.materials.new("OmniBake_Placeholder")
+        bpy.data.materials["OmniBake_Placeholder"].use_nodes = True
 
     # Assign it to object
     if len(obj.material_slots) > 0:
@@ -1228,7 +1125,6 @@ def fix_invalid_material_config(obj):
             
     return True
             
-    
 def check_col_distance(r,g,b, min_diff):
     
     current_bake_op = MasterOperation.current_bake_operation
@@ -1293,11 +1189,77 @@ def sacle_image_if_needed(img):
         img.scale(proposed_width, proposed_height)
         
 def set_image_internal_col_space(image, thisbake):
-    
-    if thisbake == BakeOperation.CYCLESBAKE:
-        if bpy.context.scene.cycles.bake_type not in ["COMBINED", "DIFFUSE"]:
-            image.colorspace_settings.name = "Non-Color"
-        
-    else: #PBR
-        if thisbake != "diffuse":
-            image.colorspace_settings.name = "Non-Color"
+    if thisbake != "diffuse":
+        image.colorspace_settings.name = "Non-Color"
+
+def findProperInput(OName, pnode):
+    for input in pnode.inputs:
+        if OName == "Anisotropy":
+            OName = "Anisotropic"
+        if OName == "Rotation":
+            OName = "Anisotropic Rotation"
+        if OName == "Color":
+            OName = "Base Color"
+        if input.identifier == OName:
+            return input
+
+def useAdditionalShaderTypes(nodetree, nodes):
+    count = 0
+    for node in nodes:
+        if (node.type == "BSDF_GLOSSY" or 
+        node.type == "BSDF_GLASS" or 
+        node.type == "BSDF_REFRACTION" or 
+        node.type == "BSDF_DIFFUSE" or 
+        node.type == "BSDF_ANISOTROPIC" or 
+        node.type == "BSDF_TRANSPARENT" or 
+        node.type == "ADD_SHADER"):
+            if node.type == "ADD_SHADER":
+                pnode = nodes.new("ShaderNodeMixShader")
+                pnode.label = "mixNew" +  str(count)
+            else:
+                pnode = nodes.new("ShaderNodeBsdfPrincipled")
+                pnode.label = "BsdfNew" + str(count)
+                
+            pnode.location = node.location
+            pnode.use_custom_color = True
+            pnode.color = (0.3375297784805298, 0.4575316309928894, 0.08615386486053467)
+
+            for input in node.inputs:
+                if len(input.links) != 0:
+                    fromNode = input.links[0].from_node
+                    for output in fromNode.outputs:
+                        if len(output.links) != 0:
+                            for linkOut in output.links:
+                                if linkOut.to_node == node:
+                                    inSocket = findProperInput(input.identifier, pnode)
+                                    nodetree.links.new(output, inSocket) 
+                else:
+                    inSocket = findProperInput(input.identifier, pnode)
+                    if inSocket.name != "Shader":
+                        inSocket.default_value = input.default_value
+                    
+            if len(node.outputs[0].links) != 0:
+                for link in node.outputs[0].links:
+                    toNode = link.to_node
+                    for input in toNode.inputs:
+                        if len(input.links) != 0:
+                            if input.links[0].from_node == node:
+                                nodetree.links.new(pnode.outputs[0], input)
+
+            if node.type == "BSDF_REFRACTION" or node.type == "BSDF_GLASS":
+                pnode.inputs[15].default_value = 1
+            if node.type == "BSDF_DIFFUSE":
+                pnode.inputs[5].default_value = 0   
+            if node.type == "BSDF_ANISOTROPIC" or node.type == "BSDF_GLOSSY":
+                pnode.inputs[4].default_value = 1
+                pnode.inputs[5].default_value = 0
+            if node.type == "BSDF_TRANSPARENT":
+                pnode.inputs[7].default_value = 0
+                pnode.inputs[15].default_value = 1
+                pnode.inputs[14].default_value = 1
+            
+            pnode.hide = True   
+            pnode.select = False
+            
+            nodetree.nodes.remove(node)
+            count += 1

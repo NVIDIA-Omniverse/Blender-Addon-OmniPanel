@@ -1,7 +1,27 @@
+# ##### BEGIN GPL LICENSE BLOCK #####
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# ##### END GPL LICENSE BLOCK #####
+
+# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
+
 import bpy
-from bpy.types import NodeFrame
 from . import functions
-from .bake_operation import BakeOperation, MasterOperation
+from .data import MasterOperation
+
 
 def find_node_from_label(label, nodes):
     for node in nodes:
@@ -52,48 +72,35 @@ def get_image_from_tag(thisbake, objname):
     batch_name = bpy.context.scene.batchName
     
     result = []
-    if current_bake_op.uv_mode == "udims":
-        
-        result = [img for img in bpy.data.images if\
-            ("SB_objname" in img and img["SB_objname"] == objname) and\
-            ("SB_batch" in img and img["SB_batch"] == batch_name) and\
-            ("SB_globalmode" in img and img["SB_globalmode"] == global_mode) and\
-            ("SB_thisbake" in img and img["SB_thisbake"] == thisbake) and\
-            ("SB_udims" in img and img["SB_udims"])\
-            ]
-    else:
-         result = [img for img in bpy.data.images if\
-            ("SB_objname" in img and img["SB_objname"] == objname) and\
-            ("SB_batch" in img and img["SB_batch"] == batch_name) and\
-            ("SB_globalmode" in img and img["SB_globalmode"] == global_mode) and\
-            ("SB_thisbake" in img and img["SB_thisbake"] == thisbake)\
-            ]
-        
+    result = [img for img in bpy.data.images if\
+    ("SB_objname" in img and img["SB_objname"] == objname) and\
+    ("SB_batch" in img and img["SB_batch"] == batch_name) and\
+    ("SB_globalmode" in img and img["SB_globalmode"] == global_mode) and\
+    ("SB_thisbake" in img and img["SB_thisbake"] == thisbake)\
+    ]
+
         
     if len(result) > 0:
         return result[0]
-            
 
-    functions.printmsg(f"ERROR: No image with matching tag ({thisbake}) found for object {objname}");
+
+    functions.printmsg(f"ERROR: No image with matching tag ({thisbake}) found for object {objname}")
     return False
 
 def create_principled_setup(nodetree, obj):
-    
+
     functions.printmsg("Creating principled material")
-    
+
     nodes = nodetree.nodes
-    
-    if(bpy.context.scene.mergedBake):
-        obj_name = bpy.context.scene.mergedBakeName
-    else:
-        obj_name = obj.name.replace("_SimpleBake", "")
+
+    obj_name = obj.name.replace("_OmniBake", "")
 
     obj.active_material.cycles.displacement_method = 'BOTH'
-    
+
     #First we wipe out any existing nodes
     for node in nodes:
         nodes.remove(node)
-    
+
     # Node Frame
     node = nodes.new("NodeFrame")
     node.location = (0,0)
@@ -107,7 +114,7 @@ def create_principled_setup(nodetree, obj):
     pnode.use_custom_color = True
     pnode.color = (0.3375297784805298, 0.4575316309928894, 0.08615386486053467)
     pnode.parent = nodes["Frame"]
-    
+
     #And the output node
     node = nodes.new("ShaderNodeOutputMaterial")
     node.location = (500, 200)
@@ -115,24 +122,11 @@ def create_principled_setup(nodetree, obj):
     node.show_options = False
     node.parent = nodes["Frame"]
 
-    # #Create Displacement Map
-    # # if(bpy.)
-    # node = nodes.new("ShaderNodeDisplacement")
-    # node.location = (75, -300)
-    # node.label = "displacement"
-    # node.parent = nodes["Frame"]
-    # node.inputs[2].default_value = 0.05
-
-    #bpy.data.materials['Material'].node_tree.nodes['Principled BSDF'].parent = 
-
     #-----------------------------------------------------------------
 
     #Node Image texture types Types
     if(bpy.context.scene.selected_col):
         image = get_image_from_tag("diffuse", obj_name)
-        #if functions.is_image_single_colour(image):
-            #functions.printmsg("Single col detected")
-        #functions.printmsg("Multi col detected")
         node = nodes.new("ShaderNodeTexImage")
         node.hide = True
         node.location = (-500, 250)
@@ -250,20 +244,14 @@ def create_principled_setup(nodetree, obj):
     make_link("transmissionrough_tex", "Color", "pnode", "Transmission Roughness", nodetree)
     make_link("normal_tex", "Color", "normalmap", "Color", nodetree)
     make_link("normalmap", "Normal", "pnode", "Normal", nodetree)
-    make_link("clearcoat_tex", "Color", "pnode", "Clearcoat", nodetree)
-    make_link("clearcoatrough_tex", "Color", "pnode", "Clearcoat Roughness", nodetree)
     make_link("specular_tex", "Color", "pnode", "Specular", nodetree)
     make_link("alpha_tex", "Color", "pnode", "Alpha", nodetree)
-    
     make_link("sss_tex", "Color", "pnode", "Subsurface", nodetree)
     make_link("ssscol_tex", "Color", "pnode", "Subsurface Color", nodetree)
-    
+
     make_link("pnode", "BSDF", "monode", "Surface", nodetree)
 
-    # make_link("displacement", "Displacement", "monode", "Displacement", nodetree)
-
     #---------------------------------------------------
-    # make_link("emission_tex", "Color", "displacement", "Height", nodetree)
     
     wipe_labels(nodes)
 
