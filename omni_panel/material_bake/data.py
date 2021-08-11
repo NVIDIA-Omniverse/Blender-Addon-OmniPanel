@@ -71,7 +71,6 @@ class BakeOperation:
         self.bake_mode = BakeOperation.PBR #So the example in the user prefs will work
         self.bake_objects = []
         self.active_object = None
-        self.sb_target_object = None
 
         #normal
         self.uv_mode = "normal"

@@ -107,14 +107,6 @@ def common_bake_prep():
                 MasterOperation.orig_UVs_dict[obj.name] = obj.data.uv_layers.active.name
             except AttributeError:
                 MasterOperation.orig_UVs_dict[obj.name] = False
-        
-        #Although starting checks will stop if no UVs, New UVs gets a pass so we need to be careful here
-        if current_bake_op.sb_target_object != None:
-            obj = current_bake_op.sb_target_object
-            if obj.data.uv_layers.active != None:
-                MasterOperation.orig_UVs_dict[obj.name] = obj.data.uv_layers.active.name
-
-        
     
     #Record the rendering engine
     if firstop:

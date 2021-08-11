@@ -25,7 +25,7 @@ import os
 import sys
 import tempfile
 from . import material_setup
-from .data import BakeOperation, MasterOperation
+from .data import MasterOperation
 
 #Global variables
 psocketname = {
@@ -43,64 +43,47 @@ psocketname = {
     }
 
 def printmsg(msg):
-    print(f"BAKE: {msg}")
-                    
+    print(f"BAKE: {msg}")                 
 
-def gen_image_name(obj_name, baketype, demo=False):
+def gen_image_name(obj_name, baketype):
     
-    if not demo:
-        current_bake_op = MasterOperation.current_bake_operation
+    current_bake_op = MasterOperation.current_bake_operation
     
     #First, let's get the format string we are working with
-    
     prefs = bpy.context.preferences.addons[OmniBakePreferences.bl_idname].preferences
     image_name = prefs.img_name_format
-    
-    #"%OBJ%_%BATCH%_%BAKETYPE%"
     
     #The easy ones
     image_name = image_name.replace("%OBJ%", obj_name)
     image_name = image_name.replace("%BATCH%", bpy.context.scene.batchName)
     
     #Bake mode
-    if not demo:
-        image_name = image_name.replace("%BAKEMODE%", current_bake_op.bake_mode)
-    else:
-        image_name = image_name.replace("%BAKEMODE%", "pbr") 
-        
+    image_name = image_name.replace("%BAKEMODE%", current_bake_op.bake_mode)    
     
     #The hard ones
     if baketype == "diffuse":
         image_name = image_name.replace("%BAKETYPE%", prefs.diffuse_alias)
-    
     elif baketype == "metalness":
-        image_name = image_name.replace("%BAKETYPE%", prefs.metal_alias)      
-
+        image_name = image_name.replace("%BAKETYPE%", prefs.metal_alias)
     elif baketype == "roughness":
-        image_name = image_name.replace("%BAKETYPE%", prefs.roughness_alias)      
-
+        image_name = image_name.replace("%BAKETYPE%", prefs.roughness_alias)
     elif baketype == "normal":
-        image_name = image_name.replace("%BAKETYPE%", prefs.normal_alias)      
-
+        image_name = image_name.replace("%BAKETYPE%", prefs.normal_alias)
     elif baketype == "transparency":
-        image_name = image_name.replace("%BAKETYPE%", prefs.transmission_alias)      
-
+        image_name = image_name.replace("%BAKETYPE%", prefs.transmission_alias)
     elif baketype == "transparencyroughness":
-        image_name = image_name.replace("%BAKETYPE%", prefs.transmissionrough_alias)       
-
+        image_name = image_name.replace("%BAKETYPE%", prefs.transmissionrough_alias)
     elif baketype == "emission":
-        image_name = image_name.replace("%BAKETYPE%", prefs.emission_alias)   
-
+        image_name = image_name.replace("%BAKETYPE%", prefs.emission_alias)
     elif baketype == "specular":
-        image_name = image_name.replace("%BAKETYPE%", prefs.specular_alias)      
-
+        image_name = image_name.replace("%BAKETYPE%", prefs.specular_alias)
     elif baketype == "alpha":
         image_name = image_name.replace("%BAKETYPE%", prefs.alpha_alias)
-        
     elif baketype == "sss":
-        image_name = image_name.replace("%BAKETYPE%", prefs.sss_alias)      
+        image_name = image_name.replace("%BAKETYPE%", prefs.sss_alias)
     elif baketype == "ssscol":
-        image_name = image_name.replace("%BAKETYPE%", prefs.ssscol_alias)      
+        image_name = image_name.replace("%BAKETYPE%", prefs.ssscol_alias)
+    #Displacement is not currently Implemented
     elif baketype == "displacement":
         image_name = image_name.replace("%BAKETYPE%", prefs.displacement_alias)
     else:
@@ -126,6 +109,11 @@ def removeDisconnectedNodes(nodetree):
             #Not a player, delete node
             nodes.remove(node)
             repeat = True
+        elif node.type == "ADD_SHADER" and len(node.outputs[0].links) == 0:
+            #Not a player, delete node
+            nodes.remove(node)
+            repeat = True
+        #Displacement is not currently Implemented
         elif node.type == "DISPLACEMENT" and len(node.outputs[0].links) == 0:
             #Not a player, delete node
             nodes.remove(node)
@@ -171,7 +159,6 @@ def create_Images(imgname, thisbake, objname):
     
     current_bake_op = MasterOperation.current_bake_operation
     global_mode = current_bake_op.bake_mode
-    # cycles_mode = bpy.context.scene.cycles.bake_type
     batch = MasterOperation.batch_name
     
     printmsg(f"Creating image {imgname}")
@@ -196,19 +183,17 @@ def create_Images(imgname, thisbake, objname):
     image["SB_globalmode"] = global_mode
     image["SB_thisbake"] = thisbake
     
-    #Always mark new iages fake user when generated in the background
+    #Always mark new images fake user when generated in the background
     if "--background" in sys.argv:
         image.use_fake_user = True
     
     #Store it at bake operation level
     MasterOperation.baked_textures.append(image)
-    
 
 def deselectAllNodes(nodes):
     for node in nodes:
         node.select = False
     
-
 def findSocketConnectedtoP(pnode, thisbake):
     #Get socket name for this bake mode
     socketname = psocketname[thisbake]
@@ -220,8 +205,6 @@ def findSocketConnectedtoP(pnode, thisbake):
     #Return the socket connected to the pnode
     return fromsocket
 
-
-#**REMOVE???
 def createdummynodes(nodetree, thisbake):
     #Loop through pnodes
     nodes = nodetree.nodes
@@ -290,45 +273,42 @@ def startingChecks(objects, bakemode):
         if len(obj.data.polygons) < 1:
             messages.append(f"ERROR: Object '{obj.name}' has no faces")
     
-    
     if(bpy.context.mode != "OBJECT"):
         messages.append("ERROR: Not in object mode")
       
-    #PBR Bake Checks - No S2A
-    if bakemode == BakeOperation.PBR:
+    #PBR Bake Checks
+    for obj in objects:
         
-        for obj in objects:
-            
-            #Is it mesh?
-            if obj.type != "MESH":
-                messages.append(f"ERROR: Object {obj.name} is not mesh")
-                #Must continue here - other checks will throw exceptions
-                continue
-            
-            #Are UVs OK?
-            if bpy.context.scene.newUVoption == False and len(obj.data.uv_layers) == 0:
-                messages.append(f"ERROR: Object {obj.name} has no UVs, and you aren't generating new ones")
-                continue
+        #Is it mesh?
+        if obj.type != "MESH":
+            messages.append(f"ERROR: Object {obj.name} is not mesh")
+            #Must continue here - other checks will throw exceptions
+            continue
         
-            #Are materials OK? Fix if not
-            if not checkObjectValidMaterialConfig(obj):
-                fix_invalid_material_config(obj)
-                
-            #Do all materials have valid PBR config?
-            if bpy.context.scene.more_shaders == False:
-                for slot in obj.material_slots:
-                    mat = slot.material
-                    result = checkMatsValidforPBR(mat)
-                    if len(result) > 0:
-                        for node_name in result:
-                            messages.append(f"ERROR: Node '{node_name}' in material '{mat.name}' on object '{obj.name}' is not valid for PBR bake. Principled BSDFs and/or Emission only!")
-            else:
-                for slot in obj.material_slots:
-                    mat = slot.material
-                    result = checkExtraMatsValidforPBR(mat)
-                    if len(result) > 0:
-                        for node_name in result:
-                            messages.append(f"ERROR: Node '{node_name}' in material '{mat.name}' on object '{obj.name}' is not supported")
+        #Are UVs OK?
+        if bpy.context.scene.newUVoption == False and len(obj.data.uv_layers) == 0:
+            messages.append(f"ERROR: Object {obj.name} has no UVs, and you aren't generating new ones")
+            continue
+    
+        #Are materials OK? Fix if not
+        if not checkObjectValidMaterialConfig(obj):
+            fix_invalid_material_config(obj)
+            
+        #Do all materials have valid PBR config?
+        if bpy.context.scene.more_shaders == False:
+            for slot in obj.material_slots:
+                mat = slot.material
+                result = checkMatsValidforPBR(mat)
+                if len(result) > 0:
+                    for node_name in result:
+                        messages.append(f"ERROR: Node '{node_name}' in material '{mat.name}' on object '{obj.name}' is not valid for PBR bake. In order to use more than just Princpled, Emission, and Mix Shaders, turn on 'Use additional Shader Types'!")
+        else:
+            for slot in obj.material_slots:
+                mat = slot.material
+                result = checkExtraMatsValidforPBR(mat)
+                if len(result) > 0:
+                    for node_name in result:
+                        messages.append(f"ERROR: Node '{node_name}' in material '{mat.name}' on object '{obj.name}' is not supported")
 
     #Let's report back
     if len(messages) != 0:
@@ -338,14 +318,10 @@ def startingChecks(objects, bakemode):
         #If we get here then everything looks good
         return True
     
-     #CAGE OBJECT BROKEN? CHECK IF NOT NONE AND, IF NOT, FLIP THE SWITCH TO USE CAGE
-    
     #------------------------------------------
     
-
 def processUVS():
-    
-    original_uvs = {}
+
     current_bake_op = MasterOperation.current_bake_operation
  
     #------------------NEW UVS ------------------------------------------------------------
@@ -353,7 +329,6 @@ def processUVS():
     if bpy.context.scene.newUVoption:
         printmsg("We are generating new UVs")
         printmsg("We are unwrapping each object individually with Smart UV Project")
-        obs = []
 
         objs = current_bake_op.bake_objects
         
@@ -375,7 +350,6 @@ def processUVS():
             bpy.ops.uv.smart_project(island_margin=bpy.context.scene.unwrapmargin)
             
             bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
-                
                     
      #------------------END NEW UVS ------------------------------------------------------------
     
@@ -387,7 +361,6 @@ def processUVS():
             for obj in current_bake_op.bake_objects:
                 if("OmniBake" in obj.data.uv_layers):
                     obj.data.uv_layers["OmniBake"].active = True
-        
          
     #Before we finish, restore the original selected and active objects
     bpy.ops.object.select_all(action="DESELECT")
@@ -402,22 +375,11 @@ def restore_Original_UVs():
     
     current_bake_op = MasterOperation.current_bake_operation
     
-    
     #First the bake objects
     for obj in current_bake_op.bake_objects:
         if MasterOperation.orig_UVs_dict[obj. name] != None:
             original_uv = MasterOperation.orig_UVs_dict[obj.name]
             obj.data.uv_layers.active = obj.data.uv_layers[original_uv]
-    
-    #Now the target objects (if any)
-    pbr_target = current_bake_op.sb_target_object
-    if pbr_target != None:
-        try:
-            original_uv = MasterOperation.orig_UVs_dict[pbr_target.name]
-            pbr_target.data.uv_layers.active = pbr_target.data.uv_layers[original_uv]
-        except KeyError:
-            printmsg(f"No original UV map found for {pbr_target.name}")
-
     
 def setupEmissionRunThrough(nodetree, m_output_node, thisbake, ismix=False):
     
@@ -476,7 +438,9 @@ def setupEmissionRunThrough(nodetree, m_output_node, thisbake, ismix=False):
     fromsocket = findSocketConnectedtoP(pnode, thisbake)
     tosocket = emissnode.inputs[0]
     nodetree.links.new(fromsocket, tosocket)        
-    
+
+#---------------------Node Finders---------------------------
+
 def find_pnode(nodetree):
     nodes = nodetree.nodes
     for node in nodes:
@@ -651,13 +615,11 @@ def prepObjects(objs, baketype):
     else:
         for obj in export_objects:
             MasterOperation.prepared_mesh_objects.append(obj)
-        
 
 def selectOnlyThis(obj):
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(state=True)
     bpy.context.view_layer.objects.active = obj
-    
     
 def setup_pure_p_material(nodetree, thisbake):
     #Create dummy nodes as needed
@@ -803,19 +765,6 @@ def setup_mix_material(nodetree, thisbake):
     #Plug emission into output
     nodetree.links.new(emissnode.outputs[0], m_output_node.inputs[0])
 
-def is_image_single_colour(img):
-    pixels = img.pixels[:]
-    if not pixels.count(pixels[0]) == len(pixels)/4:
-        return False
-    if not pixels.count(pixels[1]) == len(pixels)/4:
-        return False
-    if not pixels.count(pixels[2]) == len(pixels)/4:
-        return False
-    if not pixels.count(pixels[3]) == len(pixels)/4:
-        return False
-
-    return True
-
 #------------Long Name Truncation-----------------------
 trunc_num = 0
 trunc_dict = {}
@@ -862,9 +811,9 @@ def ShowMessageBox(messageitems_list, title, icon = 'INFO'):
     bpy.context.window_manager.popup_menu(draw, title = title, icon = icon)
     
 #---------------Bake Progress--------------------------------------------
+
 def write_bake_progress(current_operation, total_operations):
     progress = int((current_operation / total_operations) * 100)
-    
     
     t = Path(tempfile.gettempdir())
     t = t / f"OmniBake_Bgbake_{os.getpid()}"
@@ -873,11 +822,6 @@ def write_bake_progress(current_operation, total_operations):
         progfile.write(str(progress))
         
 #---------------End Bake Progress--------------------------------------------
-
-
-def diff(li1, li2):
-    li_dif = [i for i in li1 + li2 if i not in li1 or i not in li2]
-    return li_dif
 
 past_items_dict = {}
 def spot_new_items(initialise=True, item_type="images"):
@@ -912,6 +856,7 @@ def spot_new_items(initialise=True, item_type="images"):
         
         return new_item_list_names
 
+#---------------Validation Checks-------------------------------------------
 
 def checkMatsValidforPBR(mat):
 
@@ -992,44 +937,7 @@ def fix_invalid_material_config(obj):
             mat.use_nodes = True
             
     return True
-            
-def check_col_distance(r,g,b, min_diff):
-    
-    current_bake_op = MasterOperation.current_bake_operation
-    used_cols = current_bake_op.used_cols
-    
-    
-    #printmsg(f"Entering check col with {len(used_cols)} in the used_cols list")
-    #printmsg(f"Looking at {r} and {g} and {b}")
-    
-    #Very first col gets a free pass
-    if len(used_cols) < 1:
-        #printmsg("First - free pass")
-        current_bake_op.used_cols.append([r,g,b])
-        return True
 
-    ok = True
-    
-    
-    for uc in used_cols:
-        #printmsg(f"UC is {uc[0]} and {uc[1]} and {uc[2]}")
-        if round(abs(r - uc[0]),1) > min_diff or round(abs(g - uc[1]), 1) > min_diff or round(abs(b - uc[2]),1) > min_diff:
-            #printmsg(f"Distance was {round(abs(r - uc[0]),1)} and {round(abs(g - uc[1]),1)} and {round(abs(b - uc[2]),1)}")
-            pass # We passed, don't change the value
-        else:
-            ok = False #At least one rgb was too close
-    
-    #If we OKd this. Add it to the used cols list
-    if ok:
-        #printmsg(f"Result was ok, adding col to list (now {len(current_bake_op.used_cols)}")
-        current_bake_op.used_cols.append([r,g,b])
-    else:
-        pass
-        #printmsg("Failed there was a colour too close")
-    
-    #Return result either way
-    return ok
-    
 def sacle_image_if_needed(img):
     
     printmsg("Scaling images if needed")
@@ -1049,10 +957,12 @@ def sacle_image_if_needed(img):
         
     if width != proposed_width or height != proposed_height:
         img.scale(proposed_width, proposed_height)
-        
+
 def set_image_internal_col_space(image, thisbake):
     if thisbake != "diffuse":
         image.colorspace_settings.name = "Non-Color"
+
+#------------------------Allow Additional Shaders----------------------------
 
 def findProperInput(OName, pnode):
     for input in pnode.inputs:
