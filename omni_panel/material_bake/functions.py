@@ -19,6 +19,7 @@
 # Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
 
 from pathlib import Path
+from ..ui import OmniBakePreferences
 import bpy
 import os
 import sys
@@ -52,7 +53,7 @@ def gen_image_name(obj_name, baketype, demo=False):
     
     #First, let's get the format string we are working with
     
-    prefs = bpy.context.preferences.addons["OmniPanel"].preferences
+    prefs = bpy.context.preferences.addons[OmniBakePreferences.bl_idname].preferences
     image_name = prefs.img_name_format
     
     #"%OBJ%_%BATCH%_%BAKETYPE%"
@@ -184,18 +185,16 @@ def create_Images(imgname, thisbake, objname):
         bpy.data.images.remove(bpy.data.images[imgname])
         
     #Either way, create the new image
-    alpha = bpy.context.scene.useAlpha
-    
     all32 = bpy.context.scene.everything32bitfloat
     
     
     #Create image 32 bit or not 32 bit
     if thisbake == "normal" :
-        image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, alpha=alpha, float_buffer=True)
+        image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, float_buffer=True)
     elif all32:
-        image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, alpha=alpha, float_buffer=True)
+        image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, float_buffer=True)
     else:
-        image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, alpha=alpha, float_buffer=False)
+        image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, float_buffer=False)
     
     
         
@@ -1164,9 +1163,6 @@ def check_col_distance(r,g,b, min_diff):
     
 def sacle_image_if_needed(img):
     
-    texture_res = bpy.context.scene.texture_res
-    output_res = bpy.context.scene.output_res
-    
     printmsg("Scaling images if needed")
     
     context = bpy.context
@@ -1176,14 +1172,11 @@ def sacle_image_if_needed(img):
     proposed_width = 0
     proposed_height = 0
     
-    if context.scene.output_res == "0.5k": proposed_width, proposed_height = 512,512
-    if context.scene.output_res == "1k": proposed_width, proposed_height = 1024,1024
-    if context.scene.output_res == "2k": proposed_width, proposed_height = 1024*2,1024*2
-    if context.scene.output_res == "3k": proposed_width, proposed_height = 1024*3,1024*3
-    if context.scene.output_res == "4k": proposed_width, proposed_height = 1024*4,1024*4
-    if context.scene.output_res == "5k": proposed_width, proposed_height = 1024*5,1024*5
-    if context.scene.output_res == "6k": proposed_width, proposed_height = 1024*6,1024*6
-    if context.scene.output_res == "8k": proposed_width, proposed_height = 1024*8,1024*8
+    if context.scene.texture_res == "0.5k": proposed_width, proposed_height = 512,512
+    if context.scene.texture_res == "1k": proposed_width, proposed_height = 1024,1024
+    if context.scene.texture_res == "2k": proposed_width, proposed_height = 1024*2,1024*2
+    if context.scene.texture_res == "4k": proposed_width, proposed_height = 1024*4,1024*4
+    if context.scene.texture_res == "8k": proposed_width, proposed_height = 1024*8,1024*8
         
     if width != proposed_width or height != proposed_height:
         img.scale(proposed_width, proposed_height)

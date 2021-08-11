@@ -40,11 +40,8 @@ from .particle_bake.operators import(MyProperties, PARTICLES_OT_omni_hair_bake)
 
 #Classes list for register	
 #List of all classes that will be registered	
-classes = ([OBJECT_OT_omni_bake_mapbake,	
-        OBJECT_PT_omni_bake_panel, OmniBakePreferences, OBJECT_OT_omni_bake_bgbake_status, OBJECT_OT_omni_bake_bgbake_import,	
-        OBJECT_OT_omni_bake_bgbake_clear,	
-        MyProperties, PARTICLES_OT_omni_hair_bake	
-        ])
+classes = ([OBJECT_OT_omni_bake_mapbake, OBJECT_PT_omni_bake_panel, OmniBakePreferences, OBJECT_OT_omni_bake_bgbake_status, 
+        OBJECT_OT_omni_bake_bgbake_import, OBJECT_OT_omni_bake_bgbake_clear, MyProperties, PARTICLES_OT_omni_hair_bake])
 
 
 def ShowMessageBox(message = "", title = "Message Box", icon = 'INFO'):
@@ -60,8 +57,7 @@ def tex_per_mat_update(self, context):
         context.scene.prepmesh = False
         context.scene.hidesourceobjects = False
         context.scene.expand_mat_uvs = False
-        
-    
+
 def expand_mat_uvs_update(self, context):
     context.scene.newUVoption = False
     context.scene.prefer_existing_sbmap = False
@@ -71,18 +67,9 @@ def prepmesh_update(self, context):
         context.scene.hidesourceobjects = False
     else:
         context.scene.hidesourceobjects = True
-    
-def exportfileformat_update(self,context):
-    if context.scene.exportfileformat == "JPEG" or context.scene.exportfileformat == "TARGA":
-        context.scene.everything16bit = False
 
 def texture_res_update(self, context):
-    if context.scene.texture_res == "Test":
-        context.scene.imgheight = 128
-        context.scene.imgwidth = 128
-        context.scene.render.bake.margin = 2
-
-    elif context.scene.texture_res == "0.5k":
+    if context.scene.texture_res == "0.5k":
         context.scene.imgheight = 1024/2
         context.scene.imgwidth = 1024/2
         context.scene.render.bake.margin = 6
@@ -97,109 +84,19 @@ def texture_res_update(self, context):
         context.scene.imgwidth = 1024*2
         context.scene.render.bake.margin = 14
         
-    elif context.scene.texture_res == "3k":
-        context.scene.imgheight = 1024*3
-        context.scene.imgwidth = 1024*3
-        context.scene.render.bake.margin = 18
-        
     elif context.scene.texture_res == "4k":
         context.scene.imgheight = 1024*4
         context.scene.imgwidth = 1024*4
         context.scene.render.bake.margin = 20
 
-    elif context.scene.texture_res == "5k":
-        context.scene.imgheight = 1024*5
-        context.scene.imgwidth = 1024*5
-        context.scene.render.bake.margin = 24
-
-    elif context.scene.texture_res == "6k":
-        context.scene.imgheight = 1024*6
-        context.scene.imgwidth = 1024*6
-        context.scene.render.bake.margin = 28
-
     elif context.scene.texture_res == "8k":
         context.scene.imgheight = 1024*8
         context.scene.imgwidth = 1024*8
         context.scene.render.bake.margin = 32
-    
-    context.scene.output_res = context.scene.texture_res
-
-def output_res_update(self, context):
-    if context.scene.output_res == "Test":
-        context.scene.outputheight = 128
-        context.scene.outputwidth = 128
-        #context.scene.render.bake.margin = 2
-
-    elif context.scene.output_res == "0.5k":
-        context.scene.outputheight = 1024/2
-        context.scene.outputheight = 1024/2
-        #context.scene.render.bake.margin = 6
-
-    elif context.scene.output_res == "1k":
-        context.scene.outputheight = 1024
-        context.scene.outputwidth = 1024
-        #context.scene.render.bake.margin = 10
-        
-    elif context.scene.output_res == "2k":
-        context.scene.outputheight = 1024*2
-        context.scene.outputwidth = 1024*2
-        #context.scene.render.bake.margin = 14
-        
-    elif context.scene.output_res == "3k":
-        context.scene.outputheight = 1024*3
-        context.scene.outputwidth = 1024*3
-        #context.scene.render.bake.margin = 18
-        
-    elif context.scene.output_res == "4k":
-        context.scene.outputheight = 1024*4
-        context.scene.outputwidth = 1024*4
-        #context.scene.render.bake.margin = 20
-
-    elif context.scene.output_res == "5k":
-        context.scene.outputheight = 1024*5
-        context.scene.outputwidth = 1024*5
-        #context.scene.render.bake.margin = 24
-
-    elif context.scene.output_res == "6k":
-        context.scene.outputheight = 1024*6
-        context.scene.outputwidth = 1024*6
-        #context.scene.render.bake.margin = 28
-    
-    elif context.scene.output_res == "8k":
-        context.scene.outputheight = 1024*8
-        context.scene.outputwidth = 1024*8
-        #context.scene.render.bake.margin = 32
 
 def newUVoption_update(self, context):
     if bpy.context.scene.newUVoption == True:
         bpy.context.scene.prefer_existing_sbmap = False
-
-def pack_master_switch_update(self,context):
-    #Turn off all packing
-    if not context.scene.pack_master_switch:
-        context.scene.unity_lit_shader = False
-
-
-def selected_rough_update(self,context):
-    if context.scene.selected_rough == False:
-        context.scene.unity_lit_shader = False
-
-
-def selected_metal_update(self,context):
-    if context.scene.selected_metal == False:
-        context.scene.unity_lit_shader = False
-
-def selected_ao_update(self, context):
-    if not context.scene.selected_ao:
-        context.scene.unity_lit_shader = False
-    
-def selected_col_update(self, context):
-    if not context.scene.selected_col:
-        context.scene.diffuse_plus_spec_in_alpha = False
-
-def selected_specular_update(self, context):
-    if not context.scene.selected_specular:
-        context.scene.diffuse_plus_spec_in_alpha = False
 
 def all_maps_update(self,context):
     bpy.context.scene.selected_col = True
@@ -217,9 +114,7 @@ def all_maps_update(self,context):
 #-------------------END UPDATE FUNCTIONS----------------------------------------------
 
 def register():
-    
-    
-    
+
     #Register classes
     global classes
     for cls in classes:
@@ -233,13 +128,6 @@ def register():
     
     
     #Global variables
-    des = "Global Baking Mode"
-    bpy.types.Scene.omnibake_global_mode = bpy.props.EnumProperty(
-        name="Bake Mode", 
-        default="pbr_bake", 
-        description=des, 
-        items=[ ("pbr_bake", "PBR Bake", "Bake PBR maps from materials created around the Principled BSDF and Emission shaders")], )
-        # update = global_mode_update)
     
     des = "Texture Resolution"
     bpy.types.Scene.texture_res = bpy.props.EnumProperty(name="Texture Resolution", default="1k", description=des, items=[
@@ -249,16 +137,6 @@ def register():
     ("4k", "4k", f"Texture Resolution of {1024*4} x {1024*4}"),
     ("8k", "8k", f"Texture Resolution of {1024*8} x {1024*8}")
     ], update = texture_res_update)
-
-    des = "Output Resolution"
-    bpy.types.Scene.output_res = bpy.props.EnumProperty(name="Output Resolution", default="1k", description=des, items=[
-    ("0.5k", "0.5k", f"Texture Resolution of {1024/2} x {1024/2}"),
-    ("1k", "1k", f"Texture Resolution of 1024 x 1024"),
-    ("2k", "2k", f"Texture Resolution of {1024*2} x {1024*2}"),
-    ("4k", "4k", f"Texture Resolution of {1024*4} x {1024*4}"),
-    ("8k", "8k", f"Texture Resolution of {1024*8} x {1024*8}")
-    ], update = output_res_update)
-
 
     des = "Distance to cast rays from target object to selected object(s)"
     bpy.types.Scene.ray_distance = bpy.props.FloatProperty(name="Ray Distance", default = 0.2, description=des)
@@ -273,33 +151,34 @@ def register():
     bpy.types.Scene.all_maps = bpy.props.BoolProperty(name="Bake All Maps", default = True, description=des, update = all_maps_update)
 
     des = "Bake a PBR Colour map"
-    bpy.types.Scene.selected_col = bpy.props.BoolProperty(name="Diffuse", default = True, description=des, update=selected_col_update)
+    bpy.types.Scene.selected_col = bpy.props.BoolProperty(name="Diffuse", default = True, description=des)
     des = "Apply colour space settings (exposure, gamma etc.) from current scene when saving the diffuse image externally. Only available if you are exporting baked images. Will be ignored if exporting to EXR files as these don't support colour management"
     bpy.types.Scene.selected_applycolmantocol = bpy.props.BoolProperty(name="Export diffuse with col management settings", default = False, description=des)
 
+    #--- MAPS -----------------------
 
     des = "Bake a PBR Metalness map"
-    bpy.types.Scene.selected_metal = bpy.props.BoolProperty(name="Metal", description=des, update=selected_metal_update)
+    bpy.types.Scene.selected_metal = bpy.props.BoolProperty(name="Metal", description=des, default= True)
     des = "Bake a PBR Roughness or Glossy map"
-    bpy.types.Scene.selected_rough = bpy.props.BoolProperty(name="Roughness", description=des, update=selected_rough_update)
+    bpy.types.Scene.selected_rough = bpy.props.BoolProperty(name="Roughness", description=des, default= True)
     des = "Bake a Normal map"
-    bpy.types.Scene.selected_normal = bpy.props.BoolProperty(name="Normal", description=des)
+    bpy.types.Scene.selected_normal = bpy.props.BoolProperty(name="Normal", description=des, default= True)
     des = "Bake a PBR Transmission map"
-    bpy.types.Scene.selected_trans = bpy.props.BoolProperty(name="Transmission", description=des)
+    bpy.types.Scene.selected_trans = bpy.props.BoolProperty(name="Transmission", description=des, default= True)
     des = "Bake a PBR Transmission Roughness map"
-    bpy.types.Scene.selected_transrough = bpy.props.BoolProperty(name="TR Rough", description=des)
+    bpy.types.Scene.selected_transrough = bpy.props.BoolProperty(name="TR Rough", description=des, default= True)
     des = "Bake an Emission map"
-    bpy.types.Scene.selected_emission = bpy.props.BoolProperty(name="Emission", description=des)
+    bpy.types.Scene.selected_emission = bpy.props.BoolProperty(name="Emission", description=des, default= True)
     des = "Bake a Subsurface map"
-    bpy.types.Scene.selected_sss = bpy.props.BoolProperty(name="SSS", description=des)
+    bpy.types.Scene.selected_sss = bpy.props.BoolProperty(name="SSS", description=des, default= True)
     des = "Bake a Subsurface colour map"
-    bpy.types.Scene.selected_ssscol = bpy.props.BoolProperty(name="SSS Col", description=des)
+    bpy.types.Scene.selected_ssscol = bpy.props.BoolProperty(name="SSS Col", description=des, default= True)
     des = "Bake a Specular/Reflection map"
-    bpy.types.Scene.selected_specular = bpy.props.BoolProperty(name="Specular", description=des, update=selected_specular_update)
+    bpy.types.Scene.selected_specular = bpy.props.BoolProperty(name="Specular", description=des, default= True)
     des = "Bake a PBR Alpha map"
-    bpy.types.Scene.selected_alpha = bpy.props.BoolProperty(name="Alpha", description=des)
+    bpy.types.Scene.selected_alpha = bpy.props.BoolProperty(name="Alpha", description=des, default= True)
     
-    des = "Bake each material into its own texture (for export to virtual worlds like Second Life"
+    des = "Bake each material into its own texture (for export to virtual worlds like Second Life)"
     bpy.types.Scene.tex_per_mat = bpy.props.BoolProperty(name="Texture per material", description=des, update=tex_per_mat_update)
  
     #UVs-----------
@@ -340,11 +219,6 @@ def register():
     
     des = "Export your mesh as a .fbx file with a single texture and the UV map used for baking (i.e. ready for import somewhere else. File is saved in the folder specified below, under the folder where your blend file is saved. Not available if .blend file not saved"
     bpy.types.Scene.saveObj = bpy.props.BoolProperty(name="Export mesh", default = False, description=des)
-    des = "File name of the fbx. NOTE: To maintain compatibility, only MS Windows acceptable characters will be used"
-    bpy.types.Scene.fbxName = bpy.props.StringProperty(name="FBX name", description=des, default="Export", maxlen=20)
-    
-    des = "Baked images have a transparent background (else Black)"
-    bpy.types.Scene.useAlpha = bpy.props.BoolProperty(name="Use Alpha", default = False, description=des)
         
     des = "Set the height of the baked image that will be produced"
     bpy.types.Scene.imgheight = bpy.props.IntProperty(name="Height", default=1024, description=des)
@@ -368,16 +242,6 @@ def register():
    
     des = "Margin between islands to use for Smart UV Project"
     bpy.types.Scene.unwrapmargin = bpy.props.FloatProperty(name="Margin", default=0.03, description=des)
-    
-
-    bpy.types.Scene.exportfileformat = bpy.props.EnumProperty(name="Export File Format", update=exportfileformat_update, default="PNG", 
-        description="Select the file format for exported bakes. Also applies to Sketchfab upload images", items=[
-            ("PNG", "PNG", ""),
-            ("JPEG", "JPG", ""),
-            ("TIFF", "TIFF", ""),
-            ("TARGA", "TGA", ""),
-            ("OPEN_EXR", "Open EXR", "")
-            ])
 
     bpy.types.Scene.channelpackfileformat = bpy.props.EnumProperty(name="Export File Format for Channel Packing", default="OPEN_EXR", 
         description="Select the file format for exported bakes. Also applies to Sketchfab upload images", items=[
@@ -408,31 +272,11 @@ def register():
             ])
     
     #---------------------Channel packing-------------------------------------------
-    
-    des="Display channel packing options (for game engines). Only available when Export Bakes option is used. Packed image will be exported only (no internal Blender image)."
-    bpy.types.Scene.pack_master_switch = bpy.props.BoolProperty(name="Channel Packing", description=des, update=pack_master_switch_update)
-
-    
-    des="Create a channel packed image suitable for the Unity Lit shader. You must be baking all the required components i.e. metallic, AO and smoothness. You must be exporting bakes. PNG only for now."
-    bpy.types.Scene.unity_lit_shader = bpy.props.BoolProperty(name="Unity Lit Shader", description=des)
-    
-    des="Create a packed image which is diffuse plus specular in the alpha channel. You must be baking diffuse and specular"
-    bpy.types.Scene.diffuse_plus_spec_in_alpha = bpy.props.BoolProperty(name="Diffuse + specular in alpha", description=des)
-    
 
     bpy.types.Scene.bgbake = bpy.props.EnumProperty(name="Background Bake", default="fg", items=[
     ("fg", "Foreground", "Perform baking in the foreground. Blender will lock up until baking is complete"),
     ("bg", "Background", "Perform baking in the background, leaving you free to continue to work in Blender while the baking is being carried out")
     ])
-    
-    des="Append date and time to folder name. If you turn this off there is a risk that you will accidentally overwrite bakes you did before if you forget to change the folder name"
-    bpy.types.Scene.folderdatetime = bpy.props.BoolProperty(name="Append date and time to folder", description=des, default=True)
-    
-    des="Run baked images through the compositor. Your blend file must be saved, and you must be exporting your bakes"
-    bpy.types.Scene.rundenoise = bpy.props.BoolProperty(name="Denoise", description=des, default=False)
-    
-    #Global show tips on or off
-    bpy.types.Scene.omnibake_showtips = bpy.props.BoolProperty(name="Show Tips", default=False)
    
     #---------------------Lightmap col management------------------------------------------
     des = "Apply the colour management settings you have set in the render properties panel to the lightmap. Only available when you are exporting your bakes. Will be ignored if exporting to EXR files as these don't support colour management"
@@ -466,26 +310,15 @@ def unregister():
     del bpy.types.Scene.saveObj
     del bpy.types.Scene.newUVoption
     del bpy.types.Scene.memLimit
-    del bpy.types.Scene.useAlpha
     del bpy.types.Scene.prepmesh
     del bpy.types.Scene.unwrapmargin
     del bpy.types.Scene.everything32bitfloat
     del bpy.types.Scene.everything16bit
     del bpy.types.Scene.texture_res
-    del bpy.types.Scene.output_res
     del bpy.types.Scene.hidesourceobjects
     del bpy.types.Scene.saveFolder
     del bpy.types.Scene.batchName
-    del bpy.types.Scene.fbxName
     del bpy.types.Scene.bgbake
-    del bpy.types.Scene.folderdatetime
-    del bpy.types.Scene.rundenoise
-    del bpy.types.Scene.exportFolderPerObject
-    del bpy.types.Scene.omnibake_showtips
-    del bpy.types.Scene.targetobj_cycles
-    del bpy.types.Scene.omnibake_global_mode
-    del bpy.types.Scene.selected_lightmap_denoise
-    del bpy.types.Scene.unity_lit_shader
     del bpy.types.Scene.selected_applycolmantocol
     
     del bpy.types.Scene.imgheight

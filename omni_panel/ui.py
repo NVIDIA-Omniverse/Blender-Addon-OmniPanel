@@ -111,46 +111,45 @@ class OBJECT_PT_omni_bake_panel(bpy.types.Panel):
         header.label(text = "Material Bake", icon = 'UV_DATA')
         box = column.box()
 
-        if(context.scene.omnibake_global_mode == "pbr_bake"):
             
-            row = box.row()
-            if context.scene.all_maps == True:
-                row.prop(context.scene, "all_maps", icon = 'CHECKBOX_HLT')
+        row = box.row()
+        if context.scene.all_maps == True:
+            row.prop(context.scene, "all_maps", icon = 'CHECKBOX_HLT')
 
-            
-            if context.scene.all_maps == False:
-                row.prop(context.scene, "all_maps", icon = 'CHECKBOX_DEHLT')
+        
+        if context.scene.all_maps == False:
+            row.prop(context.scene, "all_maps", icon = 'CHECKBOX_DEHLT')
 
-                column = box.column(align= True)
-                row = column.row()
-                
-                row.prop(context.scene, "selected_col")
-                row.prop(context.scene, "selected_metal")
-                
-                row = column.row()
-                row.prop(context.scene, "selected_sss")
-                row.prop(context.scene, "selected_ssscol")
-                
-                row = column.row()
-                row.prop(context.scene, "selected_rough")
-                row.prop(context.scene, "selected_normal")
-                
-                row = column.row()
-                row.prop(context.scene, "selected_trans")
-                row.prop(context.scene, "selected_transrough")
-                row = column.row()
-                row.prop(context.scene, "selected_emission")
-                row.prop(context.scene, "selected_specular")
-                row = column.row()
-                row.prop(context.scene, "selected_alpha")
-                row = column.row()
+            column = box.column(align= True)
+            row = column.row()
             
-            colm = box.column(align=True)
-            colm.prop(context.scene, "more_shaders")
-            row = colm.row()
-            row.enabled = False
-            if context.scene.more_shaders:
-                row.label(text="Inconsistent Results", icon= 'ERROR')
+            row.prop(context.scene, "selected_col")
+            row.prop(context.scene, "selected_metal")
+            
+            row = column.row()
+            row.prop(context.scene, "selected_sss")
+            row.prop(context.scene, "selected_ssscol")
+            
+            row = column.row()
+            row.prop(context.scene, "selected_rough")
+            row.prop(context.scene, "selected_normal")
+            
+            row = column.row()
+            row.prop(context.scene, "selected_trans")
+            row.prop(context.scene, "selected_transrough")
+            row = column.row()
+            row.prop(context.scene, "selected_emission")
+            row.prop(context.scene, "selected_specular")
+            row = column.row()
+            row.prop(context.scene, "selected_alpha")
+            row = column.row()
+        
+        colm = box.column(align=True)
+        colm.prop(context.scene, "more_shaders")
+        row = colm.row()
+        row.enabled = False
+        if context.scene.more_shaders:
+            row.label(text="Inconsistent Results", icon= 'ERROR')
         
         #--------Texture Settings-------------------
         
@@ -269,6 +268,8 @@ class OmniBakePreferences(bpy.types.AddonPreferences):
     # this must match the add-on name, use '__package__'
     # when defining this in a submodule of a python package.
     bl_idname = __package__
+
+    
 
     apikey: bpy.props.StringProperty(name="Sketchfab API Key: ")
     img_name_format: bpy.props.StringProperty(name="Image format string",

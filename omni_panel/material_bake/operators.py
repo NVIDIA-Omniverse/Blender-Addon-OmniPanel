@@ -87,9 +87,9 @@ class OBJECT_OT_omni_bake_mapbake(bpy.types.Operator):
         
         
         ######################TEMP###############################################
+        
         needed_bake_modes = []
-        if bpy.context.scene.omnibake_global_mode == "pbr_bake":
-            needed_bake_modes.append(BakeOperation.PBR)
+        needed_bake_modes.append(BakeOperation.PBR)
             
         #Clear the progress stuff
         BakeStatus.current_map = 0
