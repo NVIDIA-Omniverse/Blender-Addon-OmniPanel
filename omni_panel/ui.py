@@ -33,7 +33,7 @@ def get_icons_directory():
 class OBJECT_PT_omni_bake_panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "OMNI"
+    bl_category = "Omniverse"
     bl_label = "NVIDIA OMNIVERSE"
     
     current = True

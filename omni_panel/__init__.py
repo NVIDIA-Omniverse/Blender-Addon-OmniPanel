@@ -23,7 +23,7 @@ bl_info = {
     "author": "NVIDIA Corporation",
     "version": (1, 0, 0),
     "blender": (3, 0, 0),
-    "location": "View3D > Toolbar > Omni",
+    "location": "View3D > Toolbar > Omniverse",
     "description": "Nvidia Omniverse bake materials for export to usd",
     "warning": "",
     "doc_url": "",
