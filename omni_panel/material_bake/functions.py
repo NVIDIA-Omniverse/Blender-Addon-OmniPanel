@@ -183,21 +183,12 @@ def create_Images(imgname, thisbake, objname):
     #If it already exists, remove it.
     if(imgname in bpy.data.images):
         bpy.data.images.remove(bpy.data.images[imgname])
-        
-    #Either way, create the new image
-    all32 = bpy.context.scene.everything32bitfloat
-    
     
     #Create image 32 bit or not 32 bit
     if thisbake == "normal" :
         image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, float_buffer=True)
-    elif all32:
-        image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, float_buffer=True)
     else:
         image = bpy.data.images.new(imgname, IMGWIDTH, IMGHEIGHT, float_buffer=False)
-    
-    
-        
     
     #Set tags
     image["SB_objname"] = objname
@@ -359,145 +350,31 @@ def processUVS():
  
     #------------------NEW UVS ------------------------------------------------------------
     
-    if bpy.context.scene.expand_mat_uvs:
-        printmsg("We are expanding the UVs for each material into a new UV map")
-        bpy.ops.object.select_all(action="DESELECT")
+    if bpy.context.scene.newUVoption:
+        printmsg("We are generating new UVs")
+        printmsg("We are unwrapping each object individually with Smart UV Project")
+        obs = []
+
+        objs = current_bake_op.bake_objects
         
-        for obj in current_bake_op.bake_objects:
-        
+        for obj in objs:
             if("OmniBake" in obj.data.uv_layers):
                 obj.data.uv_layers.remove(obj.data.uv_layers["OmniBake"])
-        
             obj.data.uv_layers.new(name="OmniBake")
             obj.data.uv_layers["OmniBake"].active = True
-            obj.select_set(state=True)
-        
+            #Will set active object
             selectOnlyThis(obj)
             
-            bpy.ops.object.mode_set(mode='EDIT', toggle=False)
-            #Unhide any geo that's hidden in edit mode or it'll cause issues.
-            bpy.ops.mesh.reveal()
-            
-            
-            i=0
-            for slot in obj.material_slots:
-                obj.active_material_index = i
-                bpy.ops.mesh.select_all(action="DESELECT")
-                bpy.ops.object.material_slot_select()
-                bpy.ops.uv.smart_project(island_margin=bpy.context.scene.unwrapmargin)
-                i += 1
-            
-            bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
-    
-    elif bpy.context.scene.newUVoption:
-        printmsg("We are generating new UVs")
-        #Slight hack. Single object must always be Smart UV Project (nothing else makes sense)
-        if len(current_bake_op.bake_objects) < 2 :
-            bpy.context.scene.newUVmethod = "SmartUVProject_Individual"
-        
-        #If we are using the combine method, the process is the same for merged and non-merged
-        if bpy.context.scene.newUVmethod == "CombineExisting":
-            printmsg("We are combining all existing UVs into one big atlas map")
-            for obj in current_bake_op.bake_objects:
-                #If there is already an old map, remove it
-                if "OmniBake_Old" in obj.data.uv_layers:
-                    obj.data.uv_layers.remove(obj.data.uv_layers["OmniBake_Old"])
-                #If we already have a map called OmniBake, rename it.
-                if("OmniBake" in obj.data.uv_layers):
-                    obj.data.uv_layers["OmniBake"].name = "OmniBake_Old"
-                #Create a new UVMap called OmniBake based on whatever was active
-                obj.data.uv_layers.new(name="OmniBake")
-                obj.data.uv_layers["OmniBake"].active = True
-                
-            bpy.ops.object.select_all(action="DESELECT")
-            for obj in current_bake_op.bake_objects:
-                obj.select_set(state=True)
-                
-            #Check we have an active object:
-            #Older versions of Blender (may not be set at all)
-            try:
-                bpy.context.active_object.type
-            except AttributeError:
-                #We do need an active object, or we can't enter edit mode
-                bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
-            #Newer versions of Blender (always has an active object, but may not be mesh)
-            if bpy.context.active_object.type != "MESH":
-                bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
-                
-            #With everything selected, pack into one big map
+            #Blender 2.91 kindly breaks Smart UV Project in object mode so... yeah... thanks
             bpy.ops.object.mode_set(mode="EDIT", toggle=False)
             #Unhide any geo that's hidden in edit mode or it'll cause issues.
             bpy.ops.mesh.reveal()
-            
             bpy.ops.mesh.select_all(action="SELECT")
-            bpy.ops.uv.select_all(action="SELECT")
-            if bpy.context.scene.averageUVsize:
-                bpy.ops.uv.average_islands_scale()
-            bpy.ops.uv.pack_islands(rotate=True, margin=bpy.context.scene.uvpackmargin)
-            bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
-        
-        elif bpy.context.scene.newUVmethod == "SmartUVProject_Individual":
-            printmsg("We are unwrapping each object individually with Smart UV Project")
-            obs = []
-
-            objs = current_bake_op.bake_objects
-            
-            for obj in objs:
-                if("OmniBake" in obj.data.uv_layers):
-                    obj.data.uv_layers.remove(obj.data.uv_layers["OmniBake"])
-                obj.data.uv_layers.new(name="OmniBake")
-                obj.data.uv_layers["OmniBake"].active = True
-                #Will set active object
-                selectOnlyThis(obj)
-                
-                #Blender 2.91 kindly breaks Smart UV Project in object mode so... yeah... thanks
-                bpy.ops.object.mode_set(mode="EDIT", toggle=False)
-                #Unhide any geo that's hidden in edit mode or it'll cause issues.
-                bpy.ops.mesh.reveal()
-                bpy.ops.mesh.select_all(action="SELECT")
-                bpy.ops.mesh.reveal()
-
-                bpy.ops.uv.smart_project(island_margin=bpy.context.scene.unwrapmargin)
-                
-                bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
-        
-        elif bpy.context.scene.newUVmethod == "SmartUVProject_Atlas":
-            printmsg("We are unwrapping all objects into an atlas map with Smart UV Project")
-            bpy.ops.object.select_all(action="DESELECT")
-            for obj in current_bake_op.bake_objects:
-                if("OmniBake" in obj.data.uv_layers):
-                    obj.data.uv_layers.remove(obj.data.uv_layers["OmniBake"])
-                obj.data.uv_layers.new(name="OmniBake")
-                obj.data.uv_layers["OmniBake"].active = True
-                obj.select_set(state=True)
-            #With everything now selected, UV project into one big map
-            
-            #Check we have an active object:
-            #Older versions of Blender (may not be set at all)
-            try:
-                bpy.context.active_object.type
-            except AttributeError:
-                #We do need an active object, or we can't enter edit mode
-                bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
-            #Newer versions of Blender (always has an active object, but may not be mesh)
-            if bpy.context.active_object.type != "MESH":
-                bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
-
-            
-            bpy.ops.object.mode_set(mode="EDIT", toggle=False) #Enter edit mode
-            #Unhide any geo that's hidden in edit mode or it'll cause issues.
             bpy.ops.mesh.reveal()
-                
-            bpy.ops.mesh.select_all(action="SELECT")
-            o =  bpy.context.scene.tool_settings.use_uv_select_sync
-            
+
             bpy.ops.uv.smart_project(island_margin=bpy.context.scene.unwrapmargin)
             
-            #Pack islands one last time as the aspect ratio can throw it off
-            bpy.context.scene.tool_settings.use_uv_select_sync = True
-            bpy.ops.uv.pack_islands()
-            
-            bpy.ops.object.mode_set(mode="OBJECT", toggle=False)# Back to object mode, as it's expected later on
+            bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
                 
                     
      #------------------END NEW UVS ------------------------------------------------------------
@@ -678,9 +555,8 @@ def prepObjects(objs, baketype):
         new_obj.data = obj.data.copy()
         new_obj["SB_createdfrom"] = obj.name
         
-        #Unless we are baking tex per mat, then clear all materials
-        if not bpy.context.scene.tex_per_mat:
-            new_obj.data.materials.clear()
+        #clear all materials
+        new_obj.data.materials.clear()
         new_obj.name = objname + "_OmniBake"
         
         #Create a collection for our baked objects if it doesn't exist
@@ -740,35 +616,28 @@ def prepObjects(objs, baketype):
             uvlayers.remove(uvlayers[uvname])
         
     #---------------------------------END UVS--------------------------------------
-    
-        #Tex per mat will preserve existing materials
-        if not bpy.context.scene.tex_per_mat:
-        
-            #Create a new material
-            #call it same as object + batchname + baked
-            mat = bpy.data.materials.get(objname + "_" + bpy.context.scene.batchName + "_baked")
-            if mat is None:
-                mat = bpy.data.materials.new(name=objname + "_" + bpy.context.scene.batchName +"_baked")
-            
-            # Assign it to object
-            mat.use_nodes = True
-            new_obj.data.materials.append(mat)
-        
-        
-    #Tex per material should have no material setup (as prepare objects is not an option)
-    if not bpy.context.scene.tex_per_mat:
-                
-        #Set up the materials for each object
-        for obj in export_objects:
-                
-            #Should only have one material
-            mat = obj.material_slots[0].material
-            nodetree = mat.node_tree
-            
-            material_setup.create_principled_setup(nodetree, obj)
 
-            #Change object name to avoid collisions
-            obj.name = obj.name.replace("_OmniBake", "_Baked")    
+        #Create a new material
+        #call it same as object + batchname + baked
+        mat = bpy.data.materials.get(objname + "_" + bpy.context.scene.batchName + "_baked")
+        if mat is None:
+            mat = bpy.data.materials.new(name=objname + "_" + bpy.context.scene.batchName +"_baked")
+        
+        # Assign it to object
+        mat.use_nodes = True
+        new_obj.data.materials.append(mat)
+        
+    #Set up the materials for each object
+    for obj in export_objects:
+            
+        #Should only have one material
+        mat = obj.material_slots[0].material
+        nodetree = mat.node_tree
+        
+        material_setup.create_principled_setup(nodetree, obj)
+
+        #Change object name to avoid collisions
+        obj.name = obj.name.replace("_OmniBake", "_Baked")    
              
     bpy.ops.object.select_all(action="DESELECT")
     for obj in export_objects:

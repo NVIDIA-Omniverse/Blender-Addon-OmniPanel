@@ -50,8 +50,8 @@ class MyProperties(bpy.types.PropertyGroup):
     )
 
 # def fixEndFrame():
-#     mytool = context.my_tool
-#     mytool.selectedEndFrame = mytool.selectedStartFrame
+#     particleOptions = context.particle_options
+#     particleOptions.selectedEndFrame = particleOptions.selectedStartFrame
 
 
 particleSystemVisibility = []
@@ -100,7 +100,7 @@ class PARTICLES_OT_omni_hair_bake(bpy.types.Operator):
 
     def execute(self, context):
 
-        mytool = context.scene.my_tool
+        particleOptions = context.scene.particle_options
 
         startTime= time.time()
 
@@ -225,7 +225,7 @@ class PARTICLES_OT_omni_hair_bake(bpy.types.Operator):
                         parentCollection.objects.link( o )
 
                         # FOR ANIMATED EMITTER DATA
-                        if mytool.animateData and emmitOrHair == 'EMITTER':
+                        if particleOptions.animateData and emmitOrHair == 'EMITTER':
                             print("--ANIMATED EMITTER--")
                             #Prep for Keyframing
                             collectionInstances = []
@@ -267,7 +267,7 @@ class PARTICLES_OT_omni_hair_bake(bpy.types.Operator):
                                 childObj = particles[i]
                                 calculateChild = False
 
-                                if childObj.birth_time <= mytool.selectedEndFrame and childObj.die_time > mytool.selectedStartFrame:
+                                if childObj.birth_time <= particleOptions.selectedEndFrame and childObj.die_time > particleOptions.selectedStartFrame:
                                         calculateChild = True
 
                                 if calculateChild:
@@ -297,13 +297,13 @@ class PARTICLES_OT_omni_hair_bake(bpy.types.Operator):
 
                             collectionCount = len(collectionInstances)
 
-                            startFrame = mytool.selectedStartFrame
-                            endFrame = mytool.selectedEndFrame
+                            startFrame = particleOptions.selectedStartFrame
+                            endFrame = particleOptions.selectedEndFrame
 
                             #Do we need to swap start and end frame?
-                            if mytool.selectedStartFrame > mytool.selectedEndFrame:
+                            if particleOptions.selectedStartFrame > particleOptions.selectedEndFrame:
                                 endFrame = startFrame
-                                startFrame = mytool.selectedEndFrame
+                                startFrame = particleOptions.selectedEndFrame
 
                             for frame in range(startFrame, endFrame + 1):
                                 print("frame = " + str(frame))
@@ -346,7 +346,7 @@ class PARTICLES_OT_omni_hair_bake(bpy.types.Operator):
                                         activeCol.keyframe_insert("hide_render")
 
                         # FOR ANIMATED HAIR DATA
-                        elif mytool.animateData and emmitOrHair == 'HAIR':
+                        elif particleOptions.animateData and emmitOrHair == 'HAIR':
                             print("--ANIMATED HAIR--")
                             #Prep for Keyframing
                             bpy.ops.object.duplicates_make_real(use_base_parent=True, use_hierarchy=True) # bake particles
@@ -384,13 +384,13 @@ class PARTICLES_OT_omni_hair_bake(bpy.types.Operator):
 
                             collectionCount = len(collectionInstances)
 
-                            startFrame = mytool.selectedStartFrame
-                            endFrame = mytool.selectedEndFrame
+                            startFrame = particleOptions.selectedStartFrame
+                            endFrame = particleOptions.selectedEndFrame
 
                             #Do we need to swap start and end frame?
-                            if mytool.selectedStartFrame > mytool.selectedEndFrame:
+                            if particleOptions.selectedStartFrame > particleOptions.selectedEndFrame:
                                 endFrame = startFrame
-                                startFrame = mytool.selectedEndFrame
+                                startFrame = particleOptions.selectedEndFrame
 
                             for frame in range(startFrame, endFrame + 1):
                                 print("frame = " + str(frame))
@@ -470,7 +470,7 @@ class PARTICLES_OT_omni_hair_bake(bpy.types.Operator):
                 countPS += 1
             
             #Handle PS after converting
-            if mytool.deletePSystemAfterBake:
+            if particleOptions.deletePSystemAfterBake:
                 if showEmmiter == False and hasPS == True:
                     bpy.context.active_object.hide_render = True
                     bpy.context.active_object.hide_set(True)

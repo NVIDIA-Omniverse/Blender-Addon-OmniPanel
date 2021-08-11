@@ -46,26 +46,9 @@ def optimize():
         
     #Otherwise, let's do what we've always done and optimise for GPU
     else:
-        
-        #Get the max tile size we are working with
-        if(bpy.context.scene.memLimit == "Off"):
-            maxtile_x = imgwidth
-            maxtile_y = imgheight
-        else:
-            maxtile_x = int(bpy.context.scene.memLimit)
-            maxtile_y = int(bpy.context.scene.memLimit)
-    
-        #Set x tile size to greater of imgwidth and maxtile_x
-        if(imgwidth <= maxtile_x):
-            bpy.context.scene.render.tile_x = imgwidth
-        else:
-            bpy.context.scene.render.tile_x = maxtile_x
-    
-        #Set y tile size to greater of imgheight and maxtile_y
-        if(imgheight <= maxtile_y):
-            bpy.context.scene.render.tile_y = imgheight
-        else:
-            bpy.context.scene.render.tile_y = maxtile_y
+        # set max tile size
+        bpy.context.scene.render.tile_x = imgwidth
+        bpy.context.scene.render.tile_y = imgheight
 
         functions.printmsg(f"Setting tile size to {bpy.context.scene.render.tile_x}x{bpy.context.scene.render.tile_y} for baking on GPU")
 
@@ -194,12 +177,11 @@ def common_bake_finishing():
     #If prep mesh, or save object is selected, or running in the background, then do it
     #We do this on primary run only
     if firstop: 
-        if(bpy.context.scene.saveObj or bpy.context.scene.prepmesh or "--background" in sys.argv):
+        if(bpy.context.scene.prepmesh or "--background" in sys.argv):
             functions.prepObjects(current_bake_op.bake_objects, current_bake_op.bake_mode)
 
     #If the user wants it, restore the original active UV map so we don't confuse anyone
-    if bpy.context.scene.restoreOrigUVmap and lastop:
-        functions.restore_Original_UVs()
+    functions.restore_Original_UVs()
 
     #Restore the original object selection so we don't confuse anyone
     bpy.ops.object.select_all(action="DESELECT")

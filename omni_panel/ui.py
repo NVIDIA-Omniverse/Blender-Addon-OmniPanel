@@ -25,33 +25,28 @@ from os.path import join, dirname
 import bpy.utils.previews
 
 
-def get_icons_directory():
+#---------------Custom ICONs----------------------
 
+def get_icons_directory():
     icons_directory = join(dirname(__file__), "icons")
     return icons_directory
 
+#------------------------PANEL---------------------
 class OBJECT_PT_omni_bake_panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Omniverse"
     bl_label = "NVIDIA OMNIVERSE"
-    
-    current = True
     version = "0.0.0"
 
-    """
-    @classmethod
-    def poll(cls, context):
-        return (context.object is not None)
-    """
-
+    #retrieve icons
     icons = bpy.utils.previews.new()
     icons_directory = get_icons_directory()
     icons.load("OMNIBLEND", join(icons_directory, "BlenderOMNI.png"), 'IMAGE')
     icons.load("OMNI", join(icons_directory, "ICON.png"), 'IMAGE')
     icons.load("BAKE",join(icons_directory, "Oven.png"), 'IMAGE')
 
-
+    #draw the panel
     def draw(self, context):
         
         layout = self.layout
@@ -71,25 +66,21 @@ class OBJECT_PT_omni_bake_panel(bpy.types.Panel):
 
         #--------Particle Collection Instancing-------------------
         layout.separator()
-        mytool = context.scene.my_tool
+        particleOptions = context.scene.particle_options
 
         particleCol = self.layout.column(align=True)
         particleCol.label(text = "Omni Particles",
             icon='PARTICLES')
         box = particleCol.box()
         column= box.column(align= True)
-        column.prop(mytool, "deletePSystemAfterBake")
+        column.prop(particleOptions, "deletePSystemAfterBake")
 
         row = column.row()
-        row.prop(mytool, "animateData")
-        if mytool.animateData:
+        row.prop(particleOptions, "animateData")
+        if particleOptions.animateData:
             row = column.row(align=True)
-            row.prop(mytool, "selectedStartFrame")
-            row.prop(mytool, "selectedEndFrame")
-            # print(mytool.selectedStartFrame)
-            # if mytool.selectedStartFrame > mytool.selectedEndFrame:
-            #     print("Go Time")
-            #     fixEndFrame()
+            row.prop(particleOptions, "selectedStartFrame")
+            row.prop(particleOptions, "selectedEndFrame")
             row = column.row()
             row.enabled = False
             row.label(text="Increased Calculation Time", icon= 'ERROR')
@@ -100,11 +91,13 @@ class OBJECT_PT_omni_bake_panel(bpy.types.Panel):
            text='Convert',
            icon='MOD_PARTICLE_INSTANCE')
 
+        #Does not update while running. Set in "particle_bake.operators.py"
         # row = column.row()
         # row.scale_y = 1.2
-        # row.prop(mytool, "progressBar")
+        # row.prop(particleOptions, "progressBar")
 
         #--------PBR Bake Settings-------------------
+
         layout.separator()
         column = layout.column(align= True)
         header = column.row()
@@ -165,14 +158,11 @@ class OBJECT_PT_omni_bake_panel(bpy.types.Panel):
             row.label(text="Long Bake Times", icon= 'ERROR')
         
         #--------UV Settings-------------------
-        elif not context.scene.tex_per_mat:
-            column = box.column(align = True)
-            row = column.row()
-            row.prop(context.scene, "newUVoption")
-            row.prop(context.scene, "unwrapmargin")
-        else:
-            row = box.row()
-            row.prop(context.scene, "expand_mat_uvs")
+
+        column = box.column(align = True)
+        row = column.row()
+        row.prop(context.scene, "newUVoption")
+        row.prop(context.scene, "unwrapmargin")
         
         #--------Other Settings-------------------
 
@@ -184,8 +174,6 @@ class OBJECT_PT_omni_bake_panel(bpy.types.Panel):
             text = "Copy objects and apply bakes (after import)"
         
         row.prop(context.scene, "prepmesh", text=text)
-        if context.scene.tex_per_mat:
-            row.enabled = False
         
         if (context.scene.prepmesh == True):
             if bpy.context.scene.bgbake == "fg":
@@ -250,18 +238,20 @@ class OBJECT_PT_omni_bake_panel(bpy.types.Panel):
             row.label(text=f"Running {len(bgbake_ops.bgops_list)} | Finished {len(bgbake_ops.bgops_list_finished)}")
 
         #-------------Other material options-------------------------
-        if len(bpy.context.selected_objects) != 0 and bpy.context.active_object.select_get() and bpy.context.active_object.type == "MESH":
-            layout.separator()
 
-            column= layout.column(align= True)
-            column.label(text= "Convert Material to:", icon= 'SHADING_RENDERED')
-            box = column.box()
+        if len(bpy.context.selected_objects) != 0 and bpy.context.active_object != None:
+            if bpy.context.active_object.select_get() and bpy.context.active_object.type == "MESH":
+                layout.separator()
 
-            materialCol = box.column(align=True)
-            materialCol.operator('universalmaterialmap.create_template_omnipbr',
-                text='OmniPBR')
-            materialCol.operator('universalmaterialmap.create_template_omniglass',
-                text='OmniGlass')
+                column= layout.column(align= True)
+                column.label(text= "Convert Material to:", icon= 'SHADING_RENDERED')
+                box = column.box()
+
+                materialCol = box.column(align=True)
+                materialCol.operator('universalmaterialmap.create_template_omnipbr',
+                    text='OmniPBR')
+                materialCol.operator('universalmaterialmap.create_template_omniglass',
+                    text='OmniGlass')
     
 
 class OmniBakePreferences(bpy.types.AddonPreferences):
@@ -269,13 +259,8 @@ class OmniBakePreferences(bpy.types.AddonPreferences):
     # when defining this in a submodule of a python package.
     bl_idname = __package__
 
-    
-
-    apikey: bpy.props.StringProperty(name="Sketchfab API Key: ")
     img_name_format: bpy.props.StringProperty(name="Image format string",
         default="%OBJ%_%BATCH%_%BAKEMODE%_%BAKETYPE%")
-    
-    justupdated = False
     
     #Aliases
     diffuse_alias: bpy.props.StringProperty(name="Diffuse", default="diffuse")
