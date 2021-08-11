@@ -27,7 +27,7 @@ bl_info = {
     "description": "Nvidia Omniverse bake materials for export to usd",
     "warning": "",
     "doc_url": "",
-    "category": "OMNIVERSE",
+    "category": "Omniverse",
 }
 
 import bpy
