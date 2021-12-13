@@ -29,28 +29,7 @@ def optimize():
     
     current_bake_op = MasterOperation.current_bake_operation
     
-    imgwidth = bpy.context.scene.imgwidth
-    imgheight = bpy.context.scene.imgheight
-    
-    #Store the current tile sizes and sample count
-    MasterOperation.orig_tile_x = bpy.context.scene.render.tile_x
-    MasterOperation.orig_tile_y = bpy.context.scene.render.tile_y
     MasterOperation.orig_sample_count = bpy.context.scene.cycles.samples
-
-    
-    #Apparently small tile sizes are now always better for baking on CPU
-    if bpy.context.scene.cycles.device == "CPU":
-        bpy.context.scene.render.tile_x = 64
-        bpy.context.scene.render.tile_y = 64
-        functions.printmsg("Setting tile size to 64x64 for baking on CPU")
-        
-    #Otherwise, let's do what we've always done and optimise for GPU
-    else:
-        # set max tile size
-        bpy.context.scene.render.tile_x = imgwidth
-        bpy.context.scene.render.tile_y = imgheight
-
-        functions.printmsg(f"Setting tile size to {bpy.context.scene.render.tile_x}x{bpy.context.scene.render.tile_y} for baking on GPU")
 
     functions.printmsg("Reducing sample count to 16 for more efficient baking")
     bpy.context.scene.cycles.samples = 16
@@ -60,10 +39,6 @@ def optimize():
 def undo_optimize():
     #Restore sample count
     bpy.context.scene.cycles.samples = MasterOperation.orig_sample_count
-
-    #Restore tile sizes
-    bpy.context.scene.render.tile_x = MasterOperation.orig_tile_x
-    bpy.context.scene.render.tile_y = MasterOperation.orig_tile_x
 
 def common_bake_prep():
     

@@ -35,8 +35,6 @@ class MasterOperation:
     orig_objects = []
     orig_active_object = ""
     orig_sample_count = 0
-    orig_tile_x = 0
-    orig_tile_y = 0
 
     @staticmethod
     def clear():
@@ -54,8 +52,6 @@ class MasterOperation:
         MasterOperation.orig_objects = []
         MasterOperation.orig_active_object = ""
         MasterOperation.orig_sample_count = 0
-        MasterOperation.orig_tile_x = 0
-        MasterOperation.orig_tile_y = 0
 
         return True
 
